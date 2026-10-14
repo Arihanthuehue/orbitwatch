@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  html, body {
+    font-family: Arial, Helvetica, sans-serif !important;
+    @apply bg-space-950 text-neutral-200 antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: Arial, Helvetica, sans-serif !important;
+    @apply font-bold text-white tracking-normal;
+  }
+  input, button, select, textarea, code, pre {
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+}
+
+@layer utilities {
+  /* Solid tactile 3D panels - zero blurry glassmorphism */
+  .glass-panel {
+    background: #111111;
+    border: 1px solid #262626;
+    box-shadow: 0 18px 40px -8px rgba(0, 0, 0, 0.95), 0 6px 14px -3px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .glass-card {
+    background: #161616;
+    border: 1px solid #262626;
+    box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .glass-card:hover {
+    background: #1a1a1a;
+    border-color: #b45309;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px -6px rgba(0, 0, 0, 0.95), 0 0 14px rgba(217, 119, 6, 0.15);
+  }
+
+  .glass-input {
+    background: #0d0d0d;
+    border: 1px solid #333333;
+    @apply text-neutral-100 placeholder-neutral-500 rounded-lg focus:outline-none focus:border-orbit-red focus:ring-1 focus:ring-orbit-red transition-all;
+  }
+
+  .glow-red {
+    box-shadow: 0 0 18px rgba(220, 38, 38, 0.4);
+  }
+
+  .glow-yellow {
+    box-shadow: 0 0 18px rgba(217, 119, 6, 0.35);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 18px rgba(217, 119, 6, 0.35);
+  }
+}
+
+/* Crisp dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #2e2e2e;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #dc2626;
+}

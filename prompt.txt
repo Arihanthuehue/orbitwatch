@@ -1,0 +1,248 @@
+# ORBITWATCH: Space Debris Tracking Platform (Full-Stack, MySQL, Real Data)
+
+You are a senior full-stack engineer, database architect, and UI/UX designer. Build a complete, production-quality, demo-ready web application for a university DBMS course project at VIT Chennai: **"Space Debris Tracking Database Project"** (team: Pranil Vithlani 25BRS1210, Arihant Singh 25BRS1230, Tanzil Hassan 25BRS1201).
+
+The project will be evaluated through a **live demonstration** and individual viva. Everything must actually work: real database, real data, real queries, real CRUD, real security. No mockups, no screenshots-only features, no lorem ipsum, no fake placeholder data.
+
+Two reference documents are provided: the project report PDF (problem statement, schema, data dictionary, FDs, normalization, use cases) and the evaluation requirements. They define the **database design and the required features**. They do NOT define the data: all data must be real and researched (see Phase 0).
+
+---
+
+## ENVIRONMENT & BOUNDARIES (read this before anything else)
+
+Do only what you can do yourself: research, write code, write SQL, run npm packages and scripts, and test in the browser.
+
+Do NOT do any of the following, and do not stop mid-build to ask me for them. I will handle them myself after the build:
+- Creating accounts, signing in anywhere, or requesting API keys or tokens.
+- Installing system software (MySQL, Docker, Node, etc.) or downloading installers.
+- Taking screenshots for my report, building my final PPT file, or anything involving my physical setup or the evaluation venue.
+
+Build so that everything works the moment I add those things:
+- **No sign-in should be needed for the app to run with real data.** Make CelesTrak, NOAA SWPC, and NASA NeoWs (with DEMO_KEY) the default sources, all of which work without an account.
+- Integrations that need credentials (Space-Track, ESA DISCOS, a personal NASA key) must be fully coded, read their credentials from `.env`, and be **skipped gracefully** when the credentials are absent, with no errors and no empty pages.
+- **If a MySQL server is already running and reachable with the credentials in `.env`**, use it to run and verify everything. **If it isn't**, do not try to install it. Write the SQL and code with extra care, statically review it, and clearly mark in your final report which parts were never run, so I know what to test first.
+
+---
+
+## PHASE 0: RESEARCH FIRST (mandatory, before writing any code)
+
+Use web search and browsing to verify the current state of every data source. Do not rely on memory or on the sample values in the reference documents. Produce `docs/RESEARCH.md` containing, for each source: URL, auth needs, rate limits, response format and fields, update frequency, licensing/terms, and the exact endpoints you will use.
+
+Investigate at minimum:
+1. **CelesTrak** (celestrak.org): GP/OMM data (JSON/CSV) for active satellites and for debris groups (e.g., Cosmos 2251, Iridium 33, Fengyun-1C, Cosmos 1408 debris), SATCAT (names, owners, launch dates, object type, RCS size class, orbital elements, decay status), and **SOCRATES** conjunction reports (real predicted close approaches with miss distance, relative speed, max probability, TCA). Verify what is currently available.
+2. **Space-Track.org** (needs a free account, which I will create later; credentials come from `.env`; strictly respect their rate limits and usage policy). Research the API and code the integration fully as an optional enrichment source that switches on automatically when credentials exist. The app must work completely with CelesTrak only.
+3. **NASA NeoWs / JPL SBDB / CNEOS** for real near-Earth asteroid close approaches (use the key from `.env` if present, otherwise DEMO_KEY, which needs no sign-up; handle its stricter rate limits with caching).
+4. **NOAA SWPC** for real space weather (Kp index, F10.7 solar flux, X-ray flux, solar wind), which drives orbital decay.
+5. **ESA DISCOS** (if accessible) for real object size and mass. If not accessible, use SATCAT RCS size class and clearly label size values as *estimated from RCS class*.
+6. **Real ground tracking stations**: research real space-surveillance sensors and observatories (e.g., US Space Fence at Kwajalein, Millstone Hill, Goldstone, Haystack, Cobra Dane, RAF Fylingdales, ESA Optical Ground Station Tenerife, ISRO's NETRA/SSA control centre and related Indian facilities, and others you verify). Collect accurate name, country, latitude, longitude, and sensor type from reliable sources and store the source URL.
+7. **Earth/space textures**: use only public-domain or properly licensed assets (e.g., NASA Visible Earth Blue Marble, night lights, cloud map, star field). Record licenses in `docs/RESEARCH.md`. Fetch them with a script into `client/public/textures`; if any download fails, fall back to a procedural shader so the Earth and sky still look great.
+8. Current stable versions and best practices for: MySQL 8.x, three.js / react-three-fiber, satellite.js (SGP4), and your chosen libraries.
+
+**Data integrity rules (strict):**
+- Never fabricate or randomly generate orbital objects, sizes, probabilities, or conjunctions. If a field isn't available from a real source, store NULL and show "Not available", or derive it with a documented method and flag it as `estimated`.
+- Every ingested row carries `source` and `ingested_at`. Show the source and "last updated" time in the UI.
+- Compute velocity, apogee, perigee, altitude, and inclination from real orbital elements using correct physics (SGP4 / vis-viva / standard formulas). Document the formulas.
+- **Offline resilience for the demo:** cache every successful pull in the database. On startup or API failure, the app must serve the last real snapshot and show a "cached data, last synced <time>" badge. Also provide `npm run snapshot:export` and `npm run snapshot:import` so a real snapshot can be loaded without internet at the evaluation venue.
+
+---
+
+## TECH STACK
+
+- **Database: MySQL 8.x ONLY** (no NoSQL, no cloud-specific services). Provide a `docker-compose.yml` for MySQL as an option, and plain local-MySQL instructions.
+- **Backend:** Node.js + Express, `mysql2` with connection pool and **prepared statements everywhere**, `zod` for input validation, `helmet`, `cors`, rate limiting, JWT auth with `bcrypt` password hashing.
+- **Ingestion:** Node scripts (scheduled with `node-cron`) that fetch, validate, transform, and upsert real data into MySQL.
+- **Frontend:** React + Vite + TypeScript, Tailwind CSS, Framer Motion, **three.js via react-three-fiber/drei**, `satellite.js` for SGP4 propagation in the browser, Recharts (or similar) for charts.
+- Single repo with `/server`, `/client`, `/db`, `/docs`, `/scripts`. One-command setup (`npm run setup`) and one-command start (`npm run dev`).
+
+---
+
+## DATABASE DESIGN (MySQL, follows the project report, BCNF)
+
+Follow the report's entities, attributes, constraints, FKs, and ON DELETE rules. Where real data forces a justified change, make the change and document it in `docs/DESIGN_DECISIONS.md` (e.g., real debris often has no measured size, so `size_meters` is nullable with an `rcs_size_class` column and an `is_estimated` flag).
+
+**Tables (at minimum):**
+- `TRACKING_STATION` (Station_ID PK, Station_Name, Location_Country, Latitude CHECK -90..90, Longitude CHECK -180..180, Sensor_Type, source_url)
+- `SATELLITE` (Satellite_ID PK, NORAD_ID UNIQUE, intl_designator UNIQUE, Satellite_Name, Owner_Agency, Launch_Date, Operational_Status CHECK IN ('Active','Inactive','Deorbiting','Destroyed'), Orbital_Altitude_KM CHECK >0, Inclination_Deg CHECK 0..180, plus orbital elements needed for SGP4)
+- `DEBRIS` (Debris_ID PK, NORAD_ID UNIQUE, Object_Name NOT NULL, Size_Meters, rcs_size_class, Mass_KG, Velocity_KMS CHECK >0, Apogee_KM, Perigee_KM, Inclination_Deg CHECK 0..180, orbit_class, Station_ID FK ON DELETE SET NULL, parent info, orbital elements for SGP4)
+- `COLLISION_EVENT` (Event_ID PK, Satellite_ID FK ON DELETE CASCADE, Debris_ID FK ON DELETE CASCADE, Event_Timestamp (TCA), Miss_Distance_KM CHECK >=0, Relative_Velocity CHECK >0, Collision_Risk_Prob CHECK 0..1, source ENUM('SOCRATES','computed','manual'))
+- `OBSERVATION` (fixes the gap between the ER diagram and the schema: the station-monitors-object relationship; Observation_ID PK, Station_ID FK, exactly one of Satellite_ID/Debris_ID via CHECK, observed_at, position/state fields). Indexed heavily.
+- `ORBIT_STATE_HISTORY` (historical trajectory versioning: every orbital-element update keeps the old record with epoch; this is the research gap from Section 5)
+- `DEBRIS_LINEAGE` (fragment parent-child tree with self-referencing FK or parent-event table, populated from real breakup events such as Fengyun-1C, Cosmos 2251/Iridium 33, Cosmos 1408)
+- `APP_USER`, `ROLE`, `AUDIT_LOG`, `ALERT`, `TEST_CASE`, `TEST_RUN`, `DATA_SYNC_LOG`
+
+**Required DB features (all must be real and demonstrable):**
+- **Views:** `v_high_risk_events`, `v_debris_catalog`, `v_satellite_exposure`, `v_station_workload`, plus role-restricted views (e.g., a public researcher view that hides sensitive operator fields).
+- **Stored procedures:** `Get_Top10_Risky_Debris()`, `Fetch_Object_Lineage(catalog_id)` (recursive CTE), `Register_Satellite(...)`, `Record_Collision_Event(...)` (transactional), `Escalate_High_Risk_Events()` (uses a **cursor**).
+- **Functions:** `Classify_Orbit(apogee, perigee)` returning LEO/MEO/GEO/HEO, `Risk_Level(prob, miss_distance)` using the report thresholds (miss < 1 km = high priority; prob > 1e-4 = evasive maneuver recommended).
+- **Triggers:** BEFORE INSERT/UPDATE validation (negative altitude, impossible velocity, out-of-range lat/long), AFTER INSERT on COLLISION_EVENT creating an ALERT and AUDIT_LOG row when thresholds are crossed, BEFORE UPDATE on orbital elements writing the old values into ORBIT_STATE_HISTORY.
+- **Transactions:** demonstrable COMMIT, ROLLBACK, and SAVEPOINT scenarios (e.g., registering a satellite plus its first conjunction events atomically, rolling back to a savepoint on failure).
+- **Indexes:** meaningful B-tree and composite indexes (e.g., `(orbit_class, perigee_km)`, `(satellite_id, collision_risk_prob)`, `(event_timestamp)`, observation `(station_id, observed_at)`). Create scripts for "without index" and "with index" states so before/after `EXPLAIN` and `EXPLAIN ANALYZE` timings can be shown on a table with tens of thousands of real rows.
+- **Security:** real MySQL roles and `GRANT`/`REVOKE` for `role_admin`, `role_agency`, `role_operator`, `role_researcher`, aligned with the actor-to-use-case matrix in the report. The app also enforces roles at the API level.
+- **Backup and recovery:** `scripts/backup.sh` (mysqldump), `scripts/restore.sh`, and documentation of binary-log point-in-time recovery. Admin UI button to trigger a backup and list backup files.
+- **Scalability (report Section 8.4):** implement MySQL table partitioning on the largest history tables (`OBSERVATION`, `ORBIT_STATE_HISTORY`), e.g., by observation year or orbit class, respecting MySQL's rule that the partition key must be part of every unique key. Show a partition-pruning `EXPLAIN` demo. Document read-replica scaling and replication/failover as an architecture explanation with a diagram (explain it; don't fake a cluster).
+- **Ingestion throughput (report Section 8.1):** bulk loads use batched inserts, and a benchmark script measures rows per second and confirms concurrent reads are not blocked. Report the real numbers on the Testing page.
+
+Organize SQL in `/db`: `01_schema.sql`, `02_constraints_indexes.sql`, `03_views.sql`, `04_functions.sql`, `05_procedures.sql`, `06_triggers.sql`, `07_roles.sql`, `08_demo_transactions.sql`, `09_index_benchmark.sql`, plus ingestion/seed scripts that load only real data.
+
+---
+
+## APPLICATION FEATURES
+
+### 1. Cinematic landing page
+Full-screen animated 3D Earth (day/night terminator based on real current time, atmosphere glow, slow rotation), starfield with parallax, thousands of orbiting dots of real objects moving in real time, drifting real asteroids, and animated live counters (tracked objects, active satellites, debris, today's conjunctions). Strong headline, smooth scroll animations, clear call-to-action buttons into the app.
+
+### 2. Live Orbit Explorer (flagship page)
+- Render **all** real catalog objects (20,000+) smoothly at 60fps using GPU-instanced points / shaders; propagate positions with satellite.js in a Web Worker.
+- Color by type (active satellite / debris / rocket body / at-risk), size by RCS class. Orbit path line on hover/select.
+- Time controls: live, pause, speed multiplier, scrub forward/backward.
+- Filter panel: orbit class (LEO/MEO/GEO/HEO), altitude range, size class, owner/country, object type, risk status.
+- Search by name or NORAD ID with fly-to camera animation.
+- Click an object to open a slide-in detail panel (UC07/UC08): all attributes, orbital elements, Apogee/Perigee/Inclination/Semi-major axis, last tracking station, history of orbit updates, linked collision events, lineage.
+- Toggle layers: orbit shells, ground stations, station visibility cones, conjunction links, asteroid layer.
+
+### 3. Conjunction / Collision Monitor
+Real predicted conjunctions (SOCRATES) in a live-updating table with risk badges, countdown to TCA, miss distance, relative velocity, probability. Selecting an event animates both objects approaching on the globe with a distance readout. "Evasive maneuver recommended" banner when thresholds from the report are crossed. Also include a server-side screening job (satellite.js over a 24h window using altitude-shell prefiltering) that adds `computed` events, clearly labelled and not mixed up with SOCRATES probabilities.
+
+### 4. Catalog (Debris & Satellites)
+Server-side paginated, sortable, multi-criteria search (UC06) over the real catalog, with export to CSV. Detail pages (UC07). Admin/Agency CRUD forms (UC02, UC03, UC04, UC05, UC09) with validation, friendly error messages, confirmation dialogs, and toast feedback. Show the **actual SQL** executed and the resulting DB change after each operation (collapsible "DB Inspector" strip). This makes the live demo of "database updates after each operation" trivial.
+
+### 5. Ground Stations
+Real stations on the 3D globe and a 2D map view, with country, sensor type, and the count of objects observed. Station detail page with its observations.
+
+### 6. Asteroids & Space Weather
+Real near-Earth object approaches (distance in lunar distances, speed, size estimate, hazard flag) with an animated flyby visualization. Real Kp index, F10.7 flux, and X-ray flux with charts, and a short plain-language explanation of how space weather affects drag and debris decay.
+
+### 7. Analytics Dashboard (UC10)
+KPI cards with animated counters; charts: objects by orbit class, debris by size class, altitude distribution histogram, conjunctions over time, top 10 riskiest debris, debris by origin event, objects per country. Global filters. "Generate Report" exports PDF/CSV summaries.
+
+### 8. Authentication & Roles
+Login page with four seeded demo accounts (Administrator, Space Agency, Satellite Operator, Research Scientist; credentials in README, passwords hashed). JWT sessions, route guards, and UI that hides/disables what the role can't do, exactly matching the report's actor-use case matrix. Admin panel: user management, audit log viewer, data sync status, backup/restore controls.
+
+### 9. DBMS Lab (built for the live demo and viva)
+A dedicated section with these pages, each with "Run" buttons that execute real SQL against the real database and show results, execution time, and the SQL text:
+- **SQL Console:** pre-built categorized queries (CRUD, inner/left/right/self joins, nested/correlated subqueries, aggregates with GROUP BY/HAVING, set operations, window functions) plus a safe custom query box (SELECT-only for non-admin via a read-only MySQL user; single statement only; timeouts and row limits).
+- **Views / Procedures / Functions / Triggers / Cursor:** list each object with its definition and a demo button (for triggers: insert invalid data and watch it get rejected, insert a high-risk event and watch the alert and audit row appear).
+- **Transactions:** interactive COMMIT / ROLLBACK / SAVEPOINT walkthrough with before/after table state.
+- **Indexing & Performance:** drop index, run query, show `EXPLAIN` + timing; create index, rerun, show improvement chart. Side-by-side comparison table.
+- **Security:** show MySQL roles, grants per role, and a live proof (run the same statement as different roles and show allowed vs denied).
+- **Backup & Recovery:** run backup, show file, run restore on a scratch schema.
+
+### 10. Theory & Documentation section ("Learn")
+Beautifully formatted pages using this project's own tables and data as examples:
+1. Project intro: context and background (history since Sputnik 1, tracked object counts by size class, why LEO velocities of 7-8 km/s make even 1 cm debris dangerous, with the kinetic energy formula Ek = 1/2 mv^2 shown as an animated explainer using real current figures), the core problem, significance (Kessler Syndrome explained with an animated cascade visual), who benefits, objectives, existing systems (Space-Track, ESA, ISRO NETRA) with both their **strengths and limitations**, proposed solution, features, research gap (fragment lineage, unified real-time sensor data, historical trajectory versioning, role-based alerts), literature survey (5 papers as cards: methodology, findings, limitations). Verify all figures with real current sources.
+2. Requirements: stakeholders, user classes, requirement-gathering techniques (document analysis of TLE/Space-Track/CCSDS standards, domain interviews, system observation), functional and non-functional requirements (performance, security, reliability, scalability, usability), use case diagram + all ten use case descriptions (UC01-UC10) + actor-to-use-case access matrix. For each non-functional target in the report (conjunction query under 2 seconds, bulk ingestion of 500+ logs per second without blocking reads, 99.9% uptime goal, ACID compliance), show the **measured result from this build next to the target**.
+3. Database design: interactive ER diagram, EER diagram, relational schema with PK/FK highlighted, full data dictionary, relationships and ON DELETE rules.
+4. Functional dependencies and normalization: FDs per table, 1NF, 2NF, 3NF, BCNF with definitions, audit, and before/after examples using real rows, and why the design is BCNF.
+5. SQL concepts: DDL/DML/DCL/TCL, constraints, joins, subqueries, aggregates, views, procedures, functions, triggers, cursors, transactions, ACID, isolation levels, locking, each linked to its live demo.
+6. Indexing and performance theory (B-tree, composite indexes, EXPLAIN reading guide).
+7. Security and recovery theory (roles, GRANT/REVOKE, injection prevention, hashing, TLS, backup types, point-in-time recovery).
+8. Architecture: User → Front End → API → MySQL → Output flow diagram, tech stack rationale, data pipeline diagram.
+9. Testing and validation: see below.
+10. Conclusion, future scope (ML re-entry prediction, spatial indexing, debris removal integration), and references with real links.
+
+Render diagrams (ER, EER, use case, architecture, data flow) as clean SVG or Mermaid, consistent with the report.
+
+### 11. Viva Prep
+Question bank by topic (design, SQL, normalization, security, testing, performance, front-end, connectivity) with concise model answers specific to this project, flashcard mode, quiz mode with scoring, and a "Why did we choose X?" section covering key design decisions.
+
+### 12. DA3 Demo Checklist page
+A page mapping every item in the evaluation checklist (database and tables, data inserted, CRUD, joins, nested queries, aggregates, views, procedures, functions, triggers, cursors, transactions, indexing, execution plan, security, backup, front-end connectivity, error handling, dashboard, testing) to the exact page/button in the app where it is demonstrated, with a tick status.
+
+### 13. Testing & Validation
+Write real automated tests (Jest + Supertest for API, SQL-level tests for constraints/triggers/procedures). Store results in `TEST_CASE`/`TEST_RUN` and display on a Testing page: Test ID, description, input, expected result, actual result, pass/fail, bug fixed notes, plus validation results (invalid inputs rejected) and performance results (query timings, ingestion throughput). The numbers must come from real test runs.
+
+---
+
+## DESIGN & UX DIRECTION
+
+- Cinematic, premium "mission control" aesthetic: deep-space dark theme, glassmorphism HUD panels, subtle neon accents (cyan, violet, amber for warnings, red for critical), crisp typography (a modern sans for UI plus a monospace for data), generous spacing, consistent iconography.
+- Motion everywhere it adds meaning: orbiting objects, animated counters, page transitions, hover glows, smooth camera fly-tos, pulsing risk indicators. Respect `prefers-reduced-motion`.
+- Fully responsive (desktop first, usable on tablet/mobile), keyboard accessible, good contrast, loading skeletons, empty states, helpful error states.
+- Performance budget: first load under ~3s on a decent laptop, 60fps globe, lazy-load heavy pages and textures.
+- Include a small footer/credits with the team and "Data sources" with live links.
+
+---
+
+## DETAILED DESIGN SPEC (apply consistently; these are strong defaults, refine only if the result looks clearly better and keeps the same direction)
+
+**Design tokens**
+- Background near-black navy `#05070D`; panels are glass: `rgba(255,255,255,0.04)` fill, 16px backdrop blur, 1px `rgba(255,255,255,0.08)` border, soft inner glow, 14-16px radius.
+- Accents: cyan `#22D3EE` (primary, active satellites), violet `#8B5CF6` (highlights, rocket bodies), amber `#F59E0B` (warnings, debris), red `#EF4444` (critical, at-risk objects, pulsing), green `#22C55E` (pass, healthy, success).
+- Type: Space Grotesk for headings, Inter for body, JetBrains Mono for data (IDs, coordinates, SQL, numbers). Install through `@fontsource` npm packages, with no external font requests at runtime.
+- Motion: 200-400ms ease-out transitions, counters count up on first view, hover glow on interactive cards, camera fly-to about 1.2s, risk indicators pulse. Everything honors `prefers-reduced-motion`.
+
+**Global shell**
+- Top navigation: Explore, Monitor, Catalog, Analytics, DBMS Lab, Learn. At the right: a data-freshness indicator (source and "last synced"), a "cached data" badge when offline, and a role badge with a user menu.
+- Footer: team credits and live data-source links. Toast notifications for every action. Loading skeletons, friendly empty states, and error states with a retry button on every data panel. Never show raw errors or stack traces.
+- Disabled actions that the current role can't use show a tooltip explaining why.
+
+**Per-page design**
+- **Landing:** full-screen Earth hero with headline and call-to-action buttons, live counters animating up, feature sections that reveal on scroll.
+- **Live Orbit Explorer:** full-bleed globe with floating glass panels (filters left, time controls along the bottom, object details sliding in from the right). The selected object's orbit draws as a glowing line. Object point size follows radar size class.
+- **Conjunction Monitor:** split layout with the event table on one side and the animated approach view on the other. Risk badges are colored by level, and critical rows pulse.
+- **Catalog:** clean data tables with filter chips, monospace values, and color-coded status badges, inline form validation, and a code-style DB Inspector strip that shows the SQL and resulting DB change after each operation.
+- **Ground Stations:** glowing station markers with visibility cones, with a toggle between globe and 2D map views.
+- **Asteroids and Space Weather:** animated flyby scene with data cards beside it, and time-series charts with threshold bands.
+- **Dashboard:** grid of glass cards, consistent chart colors, KPI numbers counting up, charts animating in.
+- **Login:** centered glass card over a slow animated starfield.
+- **DBMS Lab:** split view with the SQL in a code-editor style panel on the left and results (tables or charts) on the right. Transactions walk through step by step with highlighting. Include a partition-pruning `EXPLAIN` demo on the Indexing page.
+- **Learn:** sticky side table of contents, readable long-form typography, callout boxes for key definitions, clean SVG/Mermaid diagrams.
+- **Viva Prep:** flip-card flashcards, and a progress bar plus final score in quiz mode.
+- **DA3 Demo Checklist:** checklist grid with each item deep-linking to the page or button that demonstrates it.
+- **Testing:** pass/fail table with green and red badges and summary charts.
+- **Exports:** simple card grid with download buttons.
+
+---
+
+## ENGINEERING RULES
+
+- Parameterized queries only. Validate every input on client and server. Never expose stack traces to the UI. Rate-limit the auth and query endpoints.
+- Secrets only in `.env` (provide `.env.example`).
+- Clear, commented, modular code. Meaningful commit-style structure.
+- Ingestion must be idempotent (upserts) and log runs in `DATA_SYNC_LOG`. Be polite to APIs (caching, backoff, no hammering).
+- README with: prerequisites, setup, how to get Space-Track/NASA keys, seeded logins, how to run ingestion, how to export/import the offline snapshot, how to run tests, and a 10-minute **demo script** for the evaluation.
+
+---
+
+## EVALUATION DOCUMENTS (generate these too)
+
+The evaluation also needs a PPT, an updated report, source code, SQL scripts, and screenshots. Help me prepare them:
+- `docs/PPT_OUTLINE.md`: slide-by-slide outline for the required PPT (title and team, problem statement, objectives, existing system and proposed solution, architecture/workflow, database design, ER/EER, relational schema, normalization, SQL implementation, indexing and optimization, security/roles, dashboard, testing and validation, performance analysis, results/screenshots, conclusion and future scope), with speaker notes and the exact app page to screenshot for each slide.
+- `docs/REPORT_UPDATES.md`: sections to add or correct in my existing report so it matches the built system (final schema including `OBSERVATION`, `ORBIT_STATE_HISTORY`, `DEBRIS_LINEAGE`, SQL implementation, advanced features, testing, performance analysis, results, references), and a list of inconsistencies you found in the original report (for example: the ER diagram versus the relational schema, the 2NF/3NF example tables, and use case numbering) with suggested fixes.
+- An **Exports** page in the app: download the schema SQL, data dictionary (CSV/PDF), diagrams (SVG/PNG), test report, and performance results.
+- `docs/SQL_SCRIPTS_INDEX.md` listing every SQL script and what it demonstrates.
+
+---
+
+## HANDOFF: WHAT I MUST DO AFTER THE BUILD
+
+When the build is finished, do not just say "done." Generate `docs/MY_TODO.md` and also print the same checklist in your final message. It must be specific to what you actually built, ordered by priority, with exact commands, file paths, and page URLs, and written for a student who has to demo this live. Do not pad it: list only what genuinely needs me. Be honest: clearly separate **verified by you** from **not verified / needs me to check**. Cover at least:
+
+1. **Setup on my machine:** prerequisites to install, every `.env` value I must fill in (MySQL credentials, Space-Track login, NASA API key, JWT secret) and where to get each, the exact commands to initialize the database, load real data, and start the app.
+2. **Verify the data:** how to confirm the data is real and fresh (row counts per table, "last synced" timestamps, a spot check of 3 objects against CelesTrak/Space-Track), and what to do if an API is down or a key is missing.
+3. **Offline backup for demo day:** run `npm run snapshot:export` the day before, keep the snapshot and a `mysqldump` backup on a USB drive and cloud storage, and test `snapshot:import` on a clean machine.
+4. **Test every role and every demo path:** a checklist of logins and clicks to run through myself (each of the four roles, each CRUD operation, each DBMS Lab demo, each error case), mapped to the DA3 Demo Checklist page.
+5. **Change the demo credentials** and remove any secrets from the repo before sharing code.
+6. **Things I must do manually because you can't:** take screenshots for the report/PPT (list each screenshot and which page it comes from), build the final PPT from `docs/PPT_OUTLINE.md`, apply the fixes in `docs/REPORT_UPDATES.md` to my report, and add references.
+7. **Viva preparation:** which files and pages each of us (3 team members) must be able to explain, the 15 questions most likely to be asked about this exact project, and a 10-minute demo script with who presents which part, so all three of us understand the whole project.
+8. **Venue checklist for evaluation day:** laptop charged, MySQL running, app started and tested 30 minutes early, browser zoom and fullscreen set, internet fallback ready, a plan if the live API fails, and a plan if something breaks mid-demo.
+9. **Known limitations and honest caveats:** anything estimated, any report-vs-build differences, any feature that is partial, so we can explain it confidently instead of being caught off guard.
+
+---
+
+## BUILD ORDER
+
+1. Phase 0 research, then `docs/RESEARCH.md` and a written implementation plan for my review.
+2. MySQL schema, constraints, indexes, roles, views, functions, procedures, triggers.
+3. Ingestion pipeline with real data. If a database is reachable, verify row counts and data quality and report the numbers; if not, say so and mark the pipeline as untested.
+4. Backend API with auth, RBAC, CRUD, query endpoints, DB Inspector.
+5. Frontend foundation: design system, layout, auth, routing.
+6. Live Orbit Explorer + landing page globe (the flagship; get this excellent first).
+7. Conjunction Monitor, Catalog, Stations, Asteroids and Space Weather, Dashboard.
+8. DBMS Lab pages.
+9. Theory/Learn section, Viva Prep, DA3 Demo Checklist.
+10. Tests, performance benchmarks, bug fixing.
+11. Final polish: if a database is reachable, run the whole app and use the browser to click through every flow (login per role, each CRUD op, each demo button, error handling), and fix everything that breaks. Do not declare done until the live demo flow works end to end. If no database is reachable, do a careful static review of all SQL and code, run what you can (type checks, lint, unit tests that don't need MySQL, a frontend build), and list exactly what remains untested.
+12. Produce `docs/MY_TODO.md` as described in the HANDOFF section and end your final message with that checklist.
+
+At each phase, tell me what you built and what you verified. If something from the report conflicts with real data or a real API limitation, tell me the problem and your proposed fix instead of silently working around it.

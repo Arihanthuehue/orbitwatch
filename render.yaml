@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: orbitwatch
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NASA_API_KEY
+        value: DEMO_KEY
+      - key: MYSQL_URL
+        fromDatabase:
+          name: orbitwatch-db
+          property: connectionString
+
+databases:
+  - name: orbitwatch-db
+    databaseName: orbitwatch_db
+    user: orbit_admin
+    plan: free

@@ -1,0 +1,23 @@
+{
+  "name": "orbitwatch",
+  "version": "1.0.0",
+  "description": "ORBITWATCH: Space Debris Tracking Platform (Full-Stack, MySQL 8.x, Real Data)",
+  "private": true,
+  "scripts": {
+    "setup": "npm install && cd server && npm install && cd ../client && npm install",
+    "build:client": "cd client && npm install && npm run build",
+    "build:server": "cd server && npm install && npm run build",
+    "build": "npm run build:client && npm run build:server",
+    "start": "node server/dist/index.js",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "concurrently -k -p \"[{name}]\" -n \"SERVER,CLIENT\" -c \"cyan.bold,magenta.bold\" \"npm run dev:server\" \"npm run dev:client\"",
+    "ingest": "cd server && npx tsx src/scripts/ingest.ts",
+    "snapshot:export": "cd server && npx tsx src/scripts/exportSnapshot.ts",
+    "snapshot:import": "cd server && npx tsx src/scripts/importSnapshot.ts",
+    "test": "cd server && npm test"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

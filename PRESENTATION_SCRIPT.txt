@@ -1,0 +1,212 @@
+# ORBITWATCH: COMPLETE LIVE PRESENTATION SCRIPT
+# Space Debris Tracking Platform (Full-Stack, MySQL 8.x, Real SGP4 Telemetry)
+# Team: Pranil Vithlani (25BRS1210), Arihant Singh (25BRS1230), Tanzil Hassan (25BRS1201)
+# Course: Database Management Systems Lab (VIT Chennai, Fall 2026)
+
+================================================================================
+PRE-DEMO SETUP (BEFORE PROFESSORS LOOK AT THE SCREEN)
+================================================================================
+1. Open Google Chrome or Edge: http://localhost:3000 (or your live deployed URL).
+2. Press F11 to enter clean fullscreen mode.
+3. Make sure browser zoom is set to 100% or 90%.
+4. The top-right navbar will show: "Role: Administrator" (already logged in with full access).
+
+================================================================================
+SECTION 1: HERO & LIVE TELEMETRY (TOP OF PAGE)
+Speaker: Pranil Vithlani (25BRS1210)
+================================================================================
+[WHAT TO SHOW ON SCREEN]
+- The cinematic 3D Earth globe rotating with orbiting satellite dots in gold and debris in crimson.
+- The live telemetry counters grid showing:
+  * 4,333 Tracked Objects
+  * 1,576 Active Satellites
+  * 2,757 Debris Fragments
+  * 45 Critical Conjunctions
+  * 12 Ground Stations
+  * 123 sfu Solar Flux
+
+[WHAT TO SAY]
+"Good morning, professors. Today, our team—Pranil, Arihant, and Tanzil—presents ORBITWATCH, a production-grade Space Situational Awareness platform engineered on a MySQL 8.0 relational database.
+
+Every single object you see on screen is real data—there is zero placeholder or fake data. We have ingested over 4,300 real objects from CelesTrak, real close approach conjunctions from CelesTrak SOCRATES, space weather from NOAA, and asteroid flybys from NASA JPL."
+
+[ACTION]
+Click "Launch Live Orbit Explorer" (or scroll down to Section 2).
+
+================================================================================
+SECTION 2: 3D LIVE ORBIT EXPLORER (#explore)
+Speaker: Pranil Vithlani (25BRS1210)
+================================================================================
+[WHAT TO SHOW ON SCREEN]
+- The embedded 3D Mission Control viewport.
+
+[WHAT TO CLICK & DEMONSTRATE]
+1. Move the Globe:
+   * Left-click and drag: Rotate 360 degrees around the Earth.
+   * Right-click and drag (or two-finger drag): Pan and move the globe up, down, left, and right on the page.
+   * Scroll wheel: Zoom in and out.
+2. Filter Layers (Left Panel):
+   * Click "LEO", then "GEO" to show orbit filtering.
+   * Uncheck "Debris" to show only active satellites (gold dots). Check it back.
+3. Click an Active Satellite:
+   * Click any gold dot (e.g., Starlink or ISS).
+   * The glowing orbit path draws around Earth, and the right slide-in detail panel appears.
+   * Point out: Semi-Major Axis, Apogee, Perigee, Inclination, SGP4 vectors, and the Kinetic Energy calculation:
+     Ek = 1/2 * m * v^2 = 2.81 MegaJoules (equivalent to 0.67 kg TNT).
+4. Click a Ground Station on the Globe:
+   * Click one of the gold radar pins on Earth's surface (e.g., ISRO NETRA in Bengaluru).
+   * Camera flies to India, and the Ground Radar Facility detail panel slides in showing station latitude/longitude, sensor hardware, and logged passes.
+
+[WHAT TO SAY]
+"Our Live Orbit Explorer propagates Keplerian orbital elements at 60 frames per second using GPU-instanced particles. Clicking any object evaluates its instantaneous Cartesian coordinates and kinetic energy. Clicking any ground station pin reveals its radar hardware and observation telemetry."
+
+[ACTION]
+Scroll down to Section 3.
+
+================================================================================
+SECTION 3: CONJUNCTION & COLLISION MONITOR (#monitor)
+Speaker: Tanzil Hassan (25BRS1201)
+================================================================================
+[WHAT TO SHOW ON SCREEN]
+- Real predicted conjunction close approaches sorted by collision risk.
+
+[WHAT TO CLICK & DEMONSTRATE]
+1. Click on the first row in the table (a CRITICAL encounter).
+2. Point out the Red Banner: "IMMEDIATE EVASIVE MANEUVER RECOMMENDED" (miss distance <= 1.0 km, collision probability >= 10^-4).
+3. Click the red button: "Escalate Alerts (Cursor Demo)".
+   * A toast appears: "Cursor Escalation Succeeded — X critical conjunction events escalated to ACTIVE emergency alerts."
+   * The MySQL Transaction Inspector expands, showing the executed SQL: CALL Escalate_High_Risk_Events();.
+
+[WHAT TO SAY]
+"This is our collision risk monitor. It ingests real predicted encounters from CelesTrak SOCRATES where spacecraft pass within meters of each other at 14 km/s. When an encounter crosses NASA/ESA thresholds, the system recommends thruster burns.
+
+The 'Escalate Alerts' button executes a stored procedure that uses an explicit MySQL CURSOR to loop row-by-row through open high-risk encounters and write emergency alerts to the ALERT table."
+
+[ACTION]
+Scroll down to Section 4.
+
+================================================================================
+SECTION 4: SPACE ASSETS CATALOG & FULL CRUD (#catalog)
+Speaker: Tanzil Hassan (25BRS1201)
+================================================================================
+[WHAT TO SHOW ON SCREEN]
+- Paginated tables for Active Satellites and Debris Fragments.
+
+[WHAT TO CLICK & DEMONSTRATE]
+1. Click "Register Satellite" (top right of catalog).
+2. Fill in:
+   * NORAD ID: 98765
+   * Name: DEMO-SAT-VIT
+   * Agency: ISRO (India)
+   * Altitude: 550, Inclination: 97.5, Apogee: 560, Perigee: 540
+3. Click "Commit Registration".
+   * The table updates instantly with the new satellite.
+   * Expand the MySQL Transaction Inspector strip: show the professor the exact parameterized SQL and affected row count!
+4. Click the Trash icon next to your demo satellite to delete it.
+   * Explain that ON DELETE CASCADE removes all associated foreign key records.
+
+[WHAT TO SAY]
+"Here we demonstrate complete CRUD functionality. Every operation executes parameterized SQL against MySQL with full transaction logging in the AUDIT_LOG table. Our DB Inspector strip shows the exact SQL statement and database latency after every action."
+
+[ACTION]
+Scroll down to Section 5.
+
+================================================================================
+SECTION 5: GROUND STATIONS & 2D WORLD MAP (#stations)
+Speaker: Pranil Vithlani (25BRS1201)
+================================================================================
+[WHAT TO SHOW ON SCREEN]
+- The 2D World Sensor Map showing all 12 verified global radar tracking stations across the continents with radar coverage rings.
+
+[WHAT TO CLICK & DEMONSTRATE]
+1. Hover over the pin in India: tooltip shows ISRO NETRA SSA (Bengaluru).
+2. Hover over the US East Coast: Millstone Hill / Haystack Radar.
+3. Hover over the Pacific: US Space Fence (Kwajalein Atoll).
+4. Click on ISRO NETRA: the right panel updates with its sensor type (Active Electronically Steered Radar) and logged passes in the partitioned OBSERVATION table.
+
+[WHAT TO SAY]
+"This 2D equirectangular map displays the 12 ground surveillance tracking stations. Notice the observation passes table: this table uses MySQL range table partitioning by year, allowing queries to search through thousands of historical telemetry passes in milliseconds."
+
+[ACTION]
+Scroll down past Space Weather (#weather) and Analytics (#analytics).
+
+================================================================================
+SECTION 6: DBMS LAB & VIVA DEFENSE (#dbms-lab)
+Speaker: Arihant Singh (25BRS1230) — (Core Database Evaluation)
+================================================================================
+[WHAT TO SHOW ON SCREEN]
+- The interactive DBMS Lab with sub-tabs: SQL Console, Views & Routines, ACID Transactions, Indexing & Pruning, Security & Roles.
+
+[WHAT TO CLICK & DEMONSTRATE]
+1. SQL Console:
+   * On the left, click "INNER JOIN: High-Risk Conjunction Encounters" -> Click Run Query. Show the result table and latency (~5-12 ms).
+   * Click "Window Function: DENSE_RANK() by Collision Threat Level" -> Click Run Query. Show MySQL 8 window ranking live.
+2. Views & Routines Tab:
+   * Click "Execute" on Fetch_Object_Lineage.
+   * Explain: "This procedure uses a Recursive Common Table Expression (CTE) to trace the parent-child fragmentation tree of the 2007 Chinese ASAT test down 3 generations in a single query."
+3. ACID Transactions Tab:
+   * Click "Execute COMMIT Scenario": shows atomic multi-table insertion of a satellite and radar pass.
+   * Click "Execute SAVEPOINT Scenario": shows rolling back to a named savepoint to recover from a partial failure without aborting the transaction.
+   * Click "Execute ROLLBACK Scenario": shows complete transaction abort and verifies zero rows remain.
+4. Indexing & Pruning Tab:
+   * Click "Run Partition-Pruning EXPLAIN".
+   * Point out to the professor the partitions column:
+     partitions: p2026 (Pruned!)
+     Explain: "MySQL reads strictly the 2026 partition and completely bypasses all other partitions on disk."
+5. Security & Roles Tab:
+   * Show the MySQL native roles: role_admin, role_agency, role_operator, role_researcher.
+   * Explain that role_researcher has SELECT-only permissions; any direct INSERT attempt is rejected at the database engine level with Error 1142.
+
+[WHAT TO SAY]
+"The DBMS Lab is built specifically to defend our course requirements. We have implemented and verified Inner, Left, and Self Joins, Subqueries, Window Functions, Views, Procedures with Recursive CTEs, Cursors, ACID Transactions with Savepoints, B-Tree composite indexes, and Range Partitioning with proven partition pruning."
+
+[ACTION]
+Scroll down past Learn (#learn) and Viva Prep (#viva-prep).
+
+================================================================================
+SECTION 7: DA3 CHECKLIST & AUTOMATED TESTING (#checklist & #testing)
+Speaker: Arihant Singh / Tanzil Hassan
+================================================================================
+[WHAT TO SHOW ON SCREEN]
+- The DA3 Checklist mapping all 20 evaluation requirements to the live app with green verified ticks.
+
+[WHAT TO CLICK & DEMONSTRATE]
+1. Scroll into Testing Suite (#testing).
+2. Click the big red button: "Run All 12 Test Cases Live".
+3. Watch the 12 assertions run live against MySQL:
+   * TC-01: Reject negative altitude -> PASS (Signal 45000)
+   * TC-02: Reject Perigee > Apogee -> PASS (Signal 45000)
+   * TC-03: Reject impossible velocity -> PASS (Signal 45000)
+   * TC-04: Auto-create Alert on high risk -> PASS (Trigger verified)
+   * TC-05: Trajectory archiving trigger -> PASS (ORBIT_STATE_HISTORY verified)
+   * TC-06 to TC-12: Procedures, CTE, Cursor, Functions, Partition Pruning, RBAC, Savepoints -> 100% PASS.
+
+[WHAT TO SAY]
+"To ensure complete software reliability, we built an automated testing suite that executes live against MySQL's triggers, constraints, and routines. As you can see, all 12 test assertions have passed with a 100% pass rate."
+
+[ACTION]
+Scroll to the bottom footer.
+
+================================================================================
+SECTION 8: CONCLUSION & Q&A (BOTTOM OF PAGE)
+Speaker: All Team Members
+================================================================================
+[WHAT TO SAY]
+"In conclusion, ORBITWATCH demonstrates how a normalized BCNF relational database can handle real-time space situational awareness, high-velocity telemetry, and collision risk mitigation.
+
+Thank you, professors. We welcome your questions."
+
+================================================================================
+TOP 3 VIVA QUESTIONS THEY WILL ASK & HOW TO ANSWER INSTANTLY
+================================================================================
+1. "Why did you choose MySQL 8 instead of MongoDB/NoSQL?"
+   Answer:
+   "Space flight safety requires strict ACID guarantees and instantaneous consistency. Conjunction assessment involves relational joins between satellites, debris, and ground sensors where eventual consistency could cause missed collision alerts. MySQL 8 also gives us native B-Tree indexing, partition pruning, and recursive CTEs for fragmentation graphs."
+
+2. "Prove to me that your schema is in BCNF."
+   Answer:
+   "A relation is in BCNF if for every non-trivial functional dependency X -> Y, X is a superkey. In SATELLITE, candidate keys Satellite_ID and NORAD_ID determine all attributes. In DEBRIS, Debris_ID and NORAD_ID determine all attributes. Every determinant is a candidate key; there are zero partial or transitive dependencies."
+
+3. "How does partition pruning improve performance?"
+   Answer:
+   "Our OBSERVATION table is partitioned by RANGE (YEAR(observed_at)). When querying 2026 passes, our EXPLAIN plan proves that MySQL reads strictly partition p2026, pruning all older data from disk I/O and reducing query latency from seconds to under 15 milliseconds."
