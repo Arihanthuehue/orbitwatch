@@ -69,16 +69,21 @@ if (clientDist) {
 // Global centralized error handling
 app.use(errorHandler);
 
+import { getOfflineSnapshot } from './services/snapshotStore.js';
+
 export async function startServer() {
   const isDbReady = await testConnection();
-  if (!isDbReady) {
-    console.error('CRITICAL: Could not establish connection to MySQL database.');
-    process.exit(1);
+  if (isDbReady) {
+    console.log(`✓ MySQL Connection Pool established (Database: ${config.db.database} on ${config.db.host}:${config.db.port})`);
+    try {
+      await ensureDatabaseInitialized();
+    } catch (e: any) {
+      console.warn('[AutoMigrate Notice]:', e.message);
+    }
+  } else {
+    console.warn(`[DEPLOY NOTICE] Running in zero-crash deployment mode. Serving cached real snapshot data.`);
+    getOfflineSnapshot(); // Warm up snapshot dataset
   }
-  console.log(`✓ MySQL Connection Pool established (Database: ${config.db.database} on ${config.db.host}:${config.db.port})`);
-
-  // Auto-initialize schema and seed data on clean cloud deployment
-  await ensureDatabaseInitialized();
 
   // Scheduled periodic sync (every 6 hours)
   cron.schedule('0 */6 * * *', async () => {

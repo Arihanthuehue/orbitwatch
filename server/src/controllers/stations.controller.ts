@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import pool from '../db.js';
+import { getOfflineSnapshot } from '../services/snapshotStore.js';
 
 export async function getStations(_req: Request, res: Response): Promise<void> {
   try {
@@ -9,6 +10,15 @@ export async function getStations(_req: Request, res: Response): Promise<void> {
       stations: rows
     });
   } catch (err: any) {
+    const snap = getOfflineSnapshot();
+    if (snap) {
+      res.json({
+        success: true,
+        stations: snap.TRACKING_STATION || [],
+        source: 'SNAPSHOT_MODE'
+      });
+      return;
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 }

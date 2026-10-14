@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import pool from '../db.js';
 import { deriveOrbitalParameters, inferOwnerAgency } from '../services/orbitalMath.js';
+import { getOfflineSnapshot } from '../services/snapshotStore.js';
 
 export async function getAllObjectsForGlobe(_req: Request, res: Response): Promise<void> {
   try {
@@ -33,6 +34,53 @@ export async function getAllObjectsForGlobe(_req: Request, res: Response): Promi
       debris
     });
   } catch (err: any) {
+    const snap = getOfflineSnapshot();
+    if (snap) {
+      const satellites = (snap.SATELLITE || []).slice(0, 1500).map((s) => ({
+        id: s.Satellite_ID,
+        NORAD_ID: s.NORAD_ID,
+        name: s.Satellite_Name,
+        type: 'SATELLITE',
+        owner: s.Owner_Agency,
+        orbit_class: s.orbit_class,
+        altitude: s.Orbital_Altitude_KM,
+        inclination: s.Inclination_Deg,
+        eccentricity: s.Eccentricity,
+        mean_motion: s.Mean_Motion,
+        raan: s.RAAN,
+        arg_pericenter: s.Arg_Pericenter,
+        mean_anomaly: s.Mean_Anomaly,
+        bstar: s.BSTAR,
+        epoch: s.Epoch
+      }));
+      const debris = (snap.DEBRIS || []).slice(0, 2500).map((d) => ({
+        id: d.Debris_ID,
+        NORAD_ID: d.NORAD_ID,
+        name: d.Object_Name,
+        type: 'DEBRIS',
+        owner: 'Debris Fragment',
+        orbit_class: d.orbit_class,
+        altitude: (d.Apogee_KM + d.Perigee_KM) / 2,
+        inclination: d.Inclination_Deg,
+        eccentricity: d.Eccentricity,
+        mean_motion: d.Mean_Motion,
+        raan: d.RAAN,
+        arg_pericenter: d.Arg_Pericenter,
+        mean_anomaly: d.Mean_Anomaly,
+        bstar: d.BSTAR,
+        epoch: d.Epoch,
+        rcs_size_class: d.rcs_size_class,
+        size_meters: d.Size_Meters
+      }));
+      res.json({
+        success: true,
+        count: satellites.length + debris.length,
+        satellites,
+        debris,
+        source: 'SNAPSHOT_FALLBACK'
+      });
+      return;
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 }
@@ -93,6 +141,33 @@ export async function getSatellites(req: Request, res: Response): Promise<void> 
       executedSql: sql.replace(/\?/g, (val) => `'${val}'`)
     });
   } catch (err: any) {
+    const snap = getOfflineSnapshot();
+    if (snap) {
+      let filtered = snap.SATELLITE || [];
+      const search = (req.query.search as string || '').trim().toLowerCase();
+      const orbitClass = (req.query.orbitClass as string || '').trim();
+      const page = parseInt(req.query.page as string || '1', 10);
+      const limit = parseInt(req.query.limit as string || '25', 10);
+      const offset = (page - 1) * limit;
+
+      if (search) {
+        filtered = filtered.filter((s: any) => s.Satellite_Name?.toLowerCase().includes(search) || String(s.NORAD_ID).includes(search));
+      }
+      if (orbitClass && orbitClass !== 'ALL') {
+        filtered = filtered.filter((s: any) => s.orbit_class === orbitClass);
+      }
+      const total = filtered.length;
+      res.json({
+        success: true,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        data: filtered.slice(offset, offset + limit),
+        executedSql: 'SELECT * FROM SATELLITE (Snapshot Mode)'
+      });
+      return;
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 }
@@ -322,6 +397,37 @@ export async function getDebris(req: Request, res: Response): Promise<void> {
       executedSql: sql.replace(/\?/g, (val) => `'${val}'`)
     });
   } catch (err: any) {
+    const snap = getOfflineSnapshot();
+    if (snap) {
+      let filtered = snap.DEBRIS || [];
+      const search = (req.query.search as string || '').trim().toLowerCase();
+      const orbitClass = (req.query.orbitClass as string || '').trim();
+      const sizeClass = (req.query.sizeClass as string || '').trim();
+      const page = parseInt(req.query.page as string || '1', 10);
+      const limit = parseInt(req.query.limit as string || '25', 10);
+      const offset = (page - 1) * limit;
+
+      if (search) {
+        filtered = filtered.filter((d: any) => d.Object_Name?.toLowerCase().includes(search) || String(d.NORAD_ID).includes(search));
+      }
+      if (orbitClass && orbitClass !== 'ALL') {
+        filtered = filtered.filter((d: any) => d.orbit_class === orbitClass);
+      }
+      if (sizeClass && sizeClass !== 'ALL') {
+        filtered = filtered.filter((d: any) => d.rcs_size_class === sizeClass);
+      }
+      const total = filtered.length;
+      res.json({
+        success: true,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        data: filtered.slice(offset, offset + limit),
+        executedSql: 'SELECT * FROM DEBRIS (Snapshot Mode)'
+      });
+      return;
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 }

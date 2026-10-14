@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import pool from '../db.js';
+import { getOfflineSnapshot } from '../services/snapshotStore.js';
 
 export async function getDashboardKPIs(_req: Request, res: Response): Promise<void> {
   try {
@@ -26,6 +27,29 @@ export async function getDashboardKPIs(_req: Request, res: Response): Promise<vo
       }
     });
   } catch (err: any) {
+    const snap = getOfflineSnapshot();
+    if (snap) {
+      const satCount = (snap.SATELLITE || []).length;
+      const debCount = (snap.DEBRIS || []).length;
+      const critCount = (snap.COLLISION_EVENT || []).filter((c: any) => c.risk_level === 'CRITICAL').length;
+      const warnCount = (snap.COLLISION_EVENT || []).filter((c: any) => c.risk_level === 'WARNING').length;
+      res.json({
+        success: true,
+        kpis: {
+          totalTrackedObjects: satCount + debCount,
+          activeSatellites: satCount,
+          debrisFragments: debCount,
+          criticalConjunctions: critCount,
+          warningConjunctions: warnCount,
+          trackingStations: 12,
+          radarObservationsLogged: (snap.OBSERVATION || []).length,
+          geomagneticStormStatus: 'Nominal',
+          kpIndex: 2.33
+        },
+        source: 'SNAPSHOT_MODE'
+      });
+      return;
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 }

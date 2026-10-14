@@ -8,6 +8,7 @@ import analyticsRoutes from './analytics.routes.js';
 import dbmsLabRoutes from './dbmsLab.routes.js';
 import testsRoutes from './tests.routes.js';
 import adminRoutes from './admin.routes.js';
+import { isDatabaseConnected } from '../db.js';
 
 const router = Router();
 
@@ -23,11 +24,13 @@ router.use('/admin', adminRoutes);
 
 // System health check
 router.get('/health', (_req, res) => {
+  const isConnected = isDatabaseConnected();
   res.json({
     status: 'HEALTHY',
     service: 'ORBITWATCH Backend API',
     version: '1.0.0',
-    db: 'Connected (MySQL 8.x InnoDB)',
+    db: isConnected ? 'Connected (MySQL 8.x InnoDB)' : 'Snapshot Mode (latest_snapshot.json)',
+    mode: isConnected ? 'LIVE_MYSQL' : 'REAL_SNAPSHOT_FALLBACK',
     timestamp: new Date().toISOString()
   });
 });

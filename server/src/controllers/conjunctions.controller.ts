@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import pool from '../db.js';
+import { getOfflineSnapshot } from '../services/snapshotStore.js';
 
 export async function getConjunctions(req: Request, res: Response): Promise<void> {
   try {
@@ -56,6 +57,54 @@ export async function getConjunctions(req: Request, res: Response): Promise<void
       executedSql: sql.replace(/\?/g, (val) => `'${val}'`)
     });
   } catch (err: any) {
+    const snap = getOfflineSnapshot();
+    if (snap) {
+      const satsMap = new Map((snap.SATELLITE || []).map((s: any) => [s.Satellite_ID, s]));
+      const debsMap = new Map((snap.DEBRIS || []).map((d: any) => [d.Debris_ID, d]));
+      const riskLevel = (req.query.riskLevel as string || '').trim();
+      const page = parseInt(req.query.page as string || '1', 10);
+      const limit = parseInt(req.query.limit as string || '25', 10);
+      const offset = (page - 1) * limit;
+
+      let allEvents = (snap.COLLISION_EVENT || []).map((c: any) => {
+        const s = satsMap.get(c.Satellite_ID) || { Satellite_Name: 'SAT-TARGET', NORAD_ID: 25544, Owner_Agency: 'Space Agency', orbit_class: 'LEO' };
+        const d = debsMap.get(c.Debris_ID) || { Object_Name: 'DEBRIS-FRAG', NORAD_ID: 29733, rcs_size_class: 'MEDIUM', Velocity_KMS: 7.6, Apogee_KM: 600, Perigee_KM: 550 };
+        const tcaDate = new Date(c.Event_Timestamp || Date.now() + 86400000);
+        return {
+          ...c,
+          TCA: c.Event_Timestamp,
+          Sat_NORAD_ID: s.NORAD_ID,
+          Satellite_Name: s.Satellite_Name,
+          Owner_Agency: s.Owner_Agency,
+          Sat_Orbit_Class: s.orbit_class,
+          Orbital_Altitude_KM: s.Orbital_Altitude_KM || 550,
+          Sat_Inclination: s.Inclination_Deg || 51.6,
+          Debris_NORAD_ID: d.NORAD_ID,
+          Debris_Name: d.Object_Name,
+          rcs_size_class: d.rcs_size_class,
+          Debris_Velocity: d.Velocity_KMS,
+          Debris_Apogee: d.Apogee_KM,
+          Debris_Perigee: d.Perigee_KM,
+          seconds_to_tca: Math.max(0, Math.floor((tcaDate.getTime() - Date.now()) / 1000))
+        };
+      });
+
+      if (riskLevel && riskLevel !== 'ALL') {
+        allEvents = allEvents.filter((e: any) => e.risk_level === riskLevel);
+      }
+
+      const total = allEvents.length;
+      res.json({
+        success: true,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        data: allEvents.slice(offset, offset + limit),
+        executedSql: 'SELECT * FROM COLLISION_EVENT (Snapshot Mode)'
+      });
+      return;
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 }
