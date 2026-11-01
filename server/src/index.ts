@@ -72,42 +72,45 @@ app.use(errorHandler);
 import { getOfflineSnapshot } from './services/snapshotStore.js';
 
 export async function startServer() {
-  const isDbReady = await testConnection();
-  if (isDbReady) {
-    console.log(`✓ MySQL Connection Pool established (Database: ${config.db.database} on ${config.db.host}:${config.db.port})`);
-    try {
-      await ensureDatabaseInitialized();
-    } catch (e: any) {
-      console.warn('[AutoMigrate Notice]:', e.message);
-    }
-  } else {
-    console.warn(`[DEPLOY NOTICE] Running in zero-crash deployment mode. Serving cached real snapshot data.`);
-    getOfflineSnapshot(); // Warm up snapshot dataset
-  }
-
-  // Scheduled periodic sync (every 6 hours)
-  cron.schedule('0 */6 * * *', async () => {
-    console.log('[CRON] Running scheduled periodic space weather check...');
-    try {
-      const { runIngestionPipeline } = await import('./scripts/ingest.js');
-      await runIngestionPipeline();
-    } catch (err: any) {
-      console.error('[CRON] Background ingestion error:', err.message);
-    }
-  });
-
-  return app.listen(config.port, () => {
+  // Bind to 0.0.0.0 immediately so cloud hosts (Render/Railway) detect the open port instantly
+  const server = app.listen(config.port, '0.0.0.0', async () => {
     console.log(`\n======================================================`);
     console.log(`ORBITWATCH FULL-STACK APPLICATION RUNNING`);
     console.log(`Port: ${config.port}`);
     console.log(`Environment: ${config.nodeEnv}`);
     console.log(`Web App & API: http://localhost:${config.port}`);
     console.log(`======================================================\n`);
+
+    const isDbReady = await testConnection();
+    if (isDbReady) {
+      console.log(`✓ MySQL Connection Pool established (Database: ${config.db.database} on ${config.db.host}:${config.db.port})`);
+      try {
+        await ensureDatabaseInitialized();
+      } catch (e: any) {
+        console.warn('[AutoMigrate Notice]:', e.message);
+      }
+    } else {
+      console.warn(`[DEPLOY NOTICE] Running in zero-crash deployment mode. Serving cached real snapshot data.`);
+      getOfflineSnapshot();
+    }
+
+    // Scheduled periodic sync (every 6 hours)
+    cron.schedule('0 */6 * * *', async () => {
+      console.log('[CRON] Running scheduled periodic space weather check...');
+      try {
+        const { runIngestionPipeline } = await import('./scripts/ingest.js');
+        await runIngestionPipeline();
+      } catch (err: any) {
+        console.error('[CRON] Background ingestion error:', err.message);
+      }
+    });
   });
+
+  return server;
 }
 
-// Auto-start if invoked directly
-if (process.argv[1] && process.argv[1].endsWith('index.ts')) {
+// Auto-start if invoked directly (supports both tsx src/index.ts and node dist/index.js)
+if (process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'))) {
   startServer();
 }
 

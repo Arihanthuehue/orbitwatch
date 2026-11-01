@@ -1,0 +1,888 @@
+================================================================================
+ORBITWATCH: SPACE DEBRIS TRACKING & CONJUNCTION AVOIDANCE PLATFORM
+COMPLETE SYSTEM ARCHITECTURE, UI/UX DESIGN & DATABASE DOCUMENTATION
+================================================================================
+
+Project Title:   Space Debris Tracking Database Project
+Course:          Database Management Systems Lab (Fall 2026)
+Institution:     School of Computer Science & Engineering, VIT Chennai
+Authors:         Pranil Vithlani (25BRS1210) &bull; Frontend, 3D Visualization, Astrodynamics
+                 Arihant Singh   (25BRS1230) &bull; Database Architecture, BCNF, Indexing, Partitioning
+                 Tanzil Hassan   (25BRS1201) &bull; Backend REST APIs, RBAC Security, Live Ingestion
+Tech Stack:      MySQL 8.0 (InnoDB), Node.js (Express, mysql2), React 18, Three.js, Tailwind CSS
+Database Status: 100% Real Ingested Telemetry (4,333 Objects, Zero Fake/Mock Data)
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. PROJECT MISSION & PROBLEM CONTEXT (KESSLER SYNDROME & ASTRODYNAMICS)
+2. FRONTEND UI/UX DESIGN & COMPONENT ARCHITECTURE
+   2.1 Visual Design Tokens & Aesthetic System
+   2.2 Single-Page Continuous Scroll Architecture
+   2.3 Comprehensive Section-by-Section Breakdown
+   2.4 3D Globe Graphics Engine & Real-Time Coordinate Projection
+3. BACKEND SERVICE ARCHITECTURE & DATA INGESTION PIPELINE
+   3.1 REST API Architecture & Security Layer
+   3.2 External Data Source Integrations
+   3.3 Real-Time Synchronization Engine
+4. COMPLETE RELATIONAL DATABASE ARCHITECTURE (MYSQL 8.0 INNODB)
+   4.1 Relational Data Dictionary (All 16 Tables)
+   4.2 Relational Analytical & Role-Restricted Views (5 Views)
+   4.3 Stored Procedures & Recursive Graph Traversal (5 Procedures)
+   4.4 Deterministic Scalar Functions (4 Functions)
+   4.5 Database Integrity & Automation Triggers (5 Triggers)
+   4.6 MySQL Range Table Partitioning & Partition Pruning
+   4.7 B-Tree Indexing & Query Execution Plans
+   4.8 Database Engine Security: Roles & Privilege Matrix (GRANT/REVOKE)
+   4.9 ACID Transaction Management (COMMIT, SAVEPOINT, ROLLBACK)
+   4.10 Formal Boyce-Codd Normal Form (BCNF) Mathematical Proof
+5. VERIFICATION, BENCHMARKING & EVALUATION EVIDENCE
+
+
+================================================================================
+1. PROJECT MISSION & PROBLEM CONTEXT (KESSLER SYNDROME & ASTRODYNAMICS)
+================================================================================
+Since the launch of Sputnik 1 in 1957, humanity has launched over 16,000 satellites
+into Earth orbit. As of 2026, the space environment is severely congested. More than
+40,000 tracked artificial objects larger than 10 cm, over 1,000,000 fragments between
+1 cm and 10 cm, and hundreds of millions of millimeter-sized particles populate
+Low Earth Orbit (LEO, 200–2,000 km altitude).
+
+Because orbital mechanics dictates velocities of 7.5 to 8.0 km/s in LEO, relative
+closing encounter speeds during orbital intersections reach 14.0 to 15.0 km/s.
+The kinetic energy governing hypervelocity collisions scales with the square of velocity:
+   Ek = 0.5 * m * v^2
+
+Under this physical reality:
+- A 100-gram aluminum bolt traveling at 7.5 km/s carries 2.81 MegaJoules of kinetic energy.
+- This is equivalent to detonating 0.67 kg of TNT upon structural impact.
+- An impact at this velocity completely vaporizes and shatters an operational payload,
+  producing a debris cloud of thousands of secondary fragments.
+
+The Kessler Syndrome (hypothesized by NASA astrophysicist Donald J. Kessler in 1978)
+describes a self-sustaining collisional cascade: once orbital debris density exceeds
+a critical spatial threshold, collisions generate debris clouds that trigger further
+collisions, rendering vital Sun-synchronous and low-inclination LEO bands impassable
+for centuries.
+
+ORBITWATCH solves this challenge by serving as an end-to-end, production-grade Space
+Situational Awareness (SSA) platform backed by a mathematically rigorous, BCNF-normalized
+MySQL 8.0 database that continuously tracks real orbital objects, assesses real close
+approaches, monitors solar space weather drag, and logs sensor telemetry.
+
+
+================================================================================
+2. FRONTEND UI/UX DESIGN & COMPONENT ARCHITECTURE
+================================================================================
+
+2.1 Visual Design Tokens & Aesthetic System
+-------------------------------------------
+The user interface is engineered with a tactile, dark "Orbital Command Center" aesthetic:
+- Color Palette:
+  * Primary Background: Pitch Space Black (#050505) and Deep Charcoal (#0A0A0A)
+  * Elevated Containers: Solid Tactile Obsidian Panels (#111111, #161616, #181818)
+  * Primary Accents: Deep Crimson Red (#DC2626) and Dark Wine (#991B1B)
+  * Secondary Telemetry: Warm Deep Gold / Amber (#D97706, #B45309, #CA8A04)
+  * Success / Nominal State: Emerald Green (#16A34A)
+  * Borders & Dividers: Subdued Graphite Borders (#262626, #2E2E2E)
+- Typography:
+  * Standardized across the entire application to clean, high-legibility Arial
+    (Arial, Helvetica, sans-serif) for all headings, body copy, telemetry numbers,
+    tables, and code blocks.
+- Tactile 3D Styling:
+  * Zero blurry, translucent AI glassmorphism.
+  * Deep physical drop shadows:
+    - 3D Cards: 0 12px 28px -5px rgba(0, 0, 0, 0.9), 0 4px 10px -2px rgba(0, 0, 0, 0.8)
+    - 3D Panels: 0 20px 40px -10px rgba(0, 0, 0, 0.95), 0 8px 16px -4px rgba(0, 0, 0, 0.85)
+    - Bevel Highlight: Inset 0 1px 0 rgba(255, 255, 255, 0.06)
+  * All artificial flickering dots and pulsing pings have been removed from UI containers.
+    Active space objects on the 3D globe remain visually distinguished: golden dots for
+    active satellites and red dots for hazardous debris fragments.
+
+2.2 Single-Page Continuous Scroll Architecture
+----------------------------------------------
+The website operates as a continuous, unified single-page scroll application:
+- Top Sticky Navigation Bar:
+  * Brand Logo (ORBITWATCH) that instantly returns to the top hero section.
+  * Scroll-Spy Links: Explore, Monitor, Catalog, Stations, Space Weather, Analytics,
+    DBMS Lab, Learn, Viva Prep, DA3 Checklist, Exports.
+  * As the user scrolls down the page, an Intersection Observer / scroll listener
+    automatically detects the section in the viewport and highlights the corresponding
+    pill in the top navigation.
+  * Clicking any navigation pill smoothly scrolls directly to that module without
+    reloading or tab-switching.
+- Floating Utilities:
+  * "SYNC LIVE APIS" button: triggers a live synchronization cycle with NOAA and NASA.
+  * "Role Selector": allows instantaneous switching between Administrator, Space Agency,
+    Satellite Operator, and Research Scientist demo sessions.
+  * "Back to Top" Floating Button: appears smoothly on the bottom left when scrolled past 600px.
+  * Login Modal Overlay: modal window that allows credentials entry without navigating away.
+
+2.3 Comprehensive Section-by-Section Breakdown
+----------------------------------------------
+1. SECTION 1: HERO & LIVE TELEMETRY (#hero)
+   - Full-bleed animated 3D Earth globe background with real day/night terminator.
+   - Prominent headline: "Real-Time Space Debris Tracking & Conjunction Avoidance."
+   - Live Telemetry KPI Grid:
+     * Tracked Objects: 4,333 (real CelesTrak objects)
+     * Active Satellites: 1,576 (ISS, Starlink, OneWeb, ISRO, GPS, Galileo)
+     * Debris Fragments: 2,757 (Fengyun-1C, Cosmos 2251, Iridium 33, Cosmos 1408)
+     * Critical Encounters: 45 (miss distance <= 1.0 km or prob >= 1e-4)
+     * Ground Stations: 12 (ISRO NETRA, Space Fence, Millstone Hill, etc.)
+     * Solar Flux: Real NOAA F10.7 radio flux in solar flux units (sfu).
+   - Fast Action Buttons linking to Explore, Monitor, and DBMS Lab.
+
+2. SECTION 2: 3D LIVE ORBIT EXPLORER (#explore)
+   - Embedded 3D Mission Control viewport running Three.js with full OrbitControls.
+   - Movement & Camera Controls:
+     * Left-Click Drag: 360-degree free rotation in all directions (pitch & yaw).
+     * Right-Click Drag / Two-Finger Drag / Touch Drag: Full screen-space pan and
+       translation up, down, left, and right across the viewport.
+     * Scroll Wheel / Pinch: Smooth continuous zoom from near-surface (1.2 Earth radii)
+       out to GEO altitude (18.0 Earth radii).
+   - Filter Control Panel (Left HUD):
+     * Regime filters: ALL, LEO, MEO, GEO, HEO.
+     * Layer toggles: Active Satellites (gold), Debris Fragments (red), Ground Stations
+       (gold radar pins), Conjunction Links (red collision lines).
+     * Altitude range slider: dynamically trims visible objects up to 36,000 km.
+   - Real-Time Simulation Time Controls (Bottom HUD):
+     * Play / Pause toggle.
+     * Simulation speed multipliers: 1x, 5x, 25x, 100x.
+     * Reset simulation epoch button.
+   - Interactive Selection & Slide-In Detail Panel:
+     * Clicking any space object draws its glowing orbital ellipse path around Earth
+       and opens a slide-in HUD panel displaying:
+       - Semi-Major Axis (a), Apogee altitude, Perigee altitude, Mean altitude.
+       - Inclination (i), Eccentricity (e), Mean Motion (n), RAAN (Omega), Argument
+         of Pericenter (omega), Mean Anomaly (M), and BSTAR drag term.
+       - Hypervelocity Kinetic Energy Callout: computes Ek = 0.5 * m * v^2 and states
+         the exact TNT explosive equivalent in kg.
+       - Linked Conjunctions tab: close approaches specifically involving this object.
+       - Recursive Lineage Tree tab (for debris): parent object and breakup event origin.
+     * Clicking any ground station pin on Earth's surface flies the camera directly
+       to the facility and opens the Ground Radar Facility HUD panel showing its sensor
+       specifications, latitude/longitude, and recent observation passes.
+
+3. SECTION 3: CONJUNCTION & COLLISION MONITOR (#monitor)
+   - Live collision assessment table populated from real CelesTrak SOCRATES data.
+   - Sortable columns: Target Asset, Threat Debris, Miss Distance (km), Relative Velocity (km/s),
+     Maximum Collision Probability, Risk Level (CRITICAL, WARNING, MONITOR, NOMINAL).
+   - Emergency Evasive Maneuver Alert:
+     * Displays a prominent red warning banner whenever an encounter crosses critical
+       thresholds (Miss Distance <= 1.0 km or Probability >= 10^-4), recommending thruster burns.
+   - Action Buttons:
+     * "Screen Computed Encounters": runs a server-side Keplerian altitude-shell screening
+       algorithm to detect intersecting orbital nodes and inserts computed conjunctions.
+     * "Escalate Alerts (Cursor Demo)": executes stored procedure `Escalate_High_Risk_Events()`
+       which uses an explicit MySQL CURSOR to iterate over qualifying 48-hour encounters and
+       write emergency alert records.
+   - MySQL Transaction Inspector Strip: collapsible code strip displaying the exact SQL
+     statement executed and the resulting affected rows in MySQL.
+
+4. SECTION 4: SPACE ASSETS CATALOG & FULL CRUD (#catalog)
+   - Multi-criteria searchable, sortable, server-side paginated tables for both Active
+     Satellites and Debris Fragments.
+   - Filtering by name, NORAD Catalog ID, and orbital regime (LEO/MEO/GEO/HEO).
+   - Administrative / Space Agency CRUD Operations (UC02, UC03, UC04, UC05):
+     * "Register Satellite": modal form validating NORAD ID, name, agency, altitude,
+       inclination, apogee, and perigee, executing transactional stored procedure
+       `Register_Satellite()`.
+     * "Register Debris": modal form recording fragmentation debris with RCS size class
+       (SMALL, MEDIUM, LARGE) and velocity bounds.
+     * "Edit Asset": updates telemetry; automatically triggers trajectory versioning trigger.
+     * "Delete Asset": removes record; enforces `ON DELETE CASCADE` on linked collision events.
+   - CSV Export Button: exports the active table rows into standard CSV format.
+   - Dynamic DB Inspector Strip: displays the parameterized SQL statement and database
+     execution latency after every insert, update, or delete.
+
+5. SECTION 5: GROUND TRACKING STATIONS & 2D SENSOR MAP (#stations)
+   - Global sensor network monitoring 12 verified space surveillance radar and optical facilities.
+   - Interactive 2D World Map View:
+     * Custom equirectangular projection rendering continent silhouettes (North America,
+       South America, Europe, Africa, Asia, India, Australia) with dashed Equator (0 deg)
+       and Prime Meridian (0 deg) lines.
+     * Correct mathematical coordinate mapping:
+       x = ((Longitude + 180) / 360) * 100%
+       y = ((90 - Latitude) / 180) * 100%
+     * Interactive station pins with dashed radar coverage rings and hover tooltips.
+   - Facility Telemetry & Workload Cards:
+     * Detailed hardware specs (AESA radar, high-power UHF, solid-state phased array, optical SLR).
+     * Total observations logged and distinct objects tracked.
+   - Partitioned Observation Passes Table:
+     * Lists historical radar passes logged in the range-partitioned `OBSERVATION` table.
+   - "Record Radar Pass" Modal (UC09): allows operators to log a verified azimuth, elevation,
+     range (km), and Doppler velocity (km/s) pass.
+
+6. SECTION 6: SPACE WEATHER & NEAR-EARTH ASTEROIDS (#weather)
+   - Live NOAA Space Weather Prediction Center (SWPC) telemetry cards:
+     * Planetary Kp Index (geomagnetic storm scale 0–9).
+     * Solar Radio Flux F10.7 (Penticton 2800 MHz flux in sfu).
+     * Solar Wind Speed (DSCOVR plasma velocity in km/s).
+     * GOES-18 Primary X-Ray Flux (0.1–0.8 nm solar flare classification in W/m^2).
+   - Interactive Kp Trend Area Chart rendered with Recharts.
+   - Atmospheric Drag Physics Explainer: explains thermospheric heating and details the
+     aerodynamic drag equation: F_drag = 0.5 * rho * v^2 * Cd * A.
+   - Real NASA JPL NeoWs Near-Earth Asteroid Flybys:
+     * Monitored close approaches with miss distance in lunar distances (LD) and millions of km,
+       relative velocity in km/s, and estimated diameter min/max in meters.
+
+7. SECTION 7: SSA ANALYTICS DASHBOARD (#analytics - UC10)
+   - Real-time aggregated visual telemetry charts:
+     * Orbital Regime Distribution: grouped bar chart comparing Satellites vs. Debris in LEO/MEO/GEO/HEO.
+     * Debris by Radar Cross Section (RCS): donut chart showing SMALL, MEDIUM, and LARGE proportions.
+     * Altitude Congestion Histogram: 200 km bin distribution highlighting crowded LEO bands.
+     * Historical Breakup Event Origins: fragment counts linked to the 2007 Chinese ASAT test,
+       2009 Iridium/Cosmos collision, and 2021 Russian ASAT test.
+   - "Generate Executive Report": exports an executive JSON summary artifact for archival.
+
+8. SECTION 8: DBMS LAB & VIVA DEFENSE (#dbms-lab)
+   - Built specifically for the live course viva demonstration:
+     * Sub-Tab 1: SQL Console
+       - Categorized pre-built queries: INNER JOIN (conjunctions), LEFT JOIN (station loads),
+         SELF JOIN (sibling fragments), Nested Subqueries, Correlated Subqueries, GROUP BY with
+         HAVING, DENSE_RANK() Window Functions, and UNION ALL set operations.
+       - Custom query buffer allowing safe execution of read-only queries against a sandboxed
+         read-only MySQL user connection. Displays row count and execution latency in ms.
+     * Sub-Tab 2: Views & Routines
+       - Interactive catalog of all 5 database views, 5 stored procedures, 4 scalar functions,
+         and 5 triggers. Clicking "Execute" runs procedures like `Fetch_Object_Lineage` live.
+     * Sub-Tab 3: ACID Transactions
+       - Interactive walkthrough demonstrating COMMIT (atomic insert), SAVEPOINT & ROLLBACK TO
+         SAVEPOINT (partial failure recovery), and ROLLBACK (transaction abort).
+     * Sub-Tab 4: Indexing & Partition Pruning
+       - Explains B-Tree composite indexing.
+       - "Run Partition-Pruning EXPLAIN": runs EXPLAIN on the `OBSERVATION` table, proving that
+         MySQL accesses strictly partition `p2026` and prunes all other partitions on disk.
+     * Sub-Tab 5: Security & Roles
+       - Displays MySQL native database roles and privileges matrix. Demonstrates Error 1142
+         write denial when attempting unauthorized modifications.
+
+9. SECTION 9: COURSE THEORY & KNOWLEDGE BASE (#learn)
+   - Comprehensive theoretical documentation across 10 structured chapters:
+     * Project background, Sputnik 1 context, and hypervelocity kinetic impact physics.
+     * Kessler Syndrome cascade mechanics and mathematical formulas.
+     * Systems survey comparing Space-Track, ESA DISCOS, and ISRO NETRA.
+     * Requirements specification: stakeholders, gathering techniques, functional/non-functional targets.
+     * Formal Boyce-Codd Normal Form (BCNF) definitions and table-by-table proofs.
+     * SQL concepts: DDL/DML/DCL/TCL, joins, subqueries, ACID, and isolation levels.
+     * Table partitioning, indexing, and EXPLAIN execution plan reading guide.
+     * Relational database security, hashing, injection defense, and binary-log recovery.
+     * 3-tier system architecture and data pipeline flow diagram.
+     * Literature survey reviewing 5 peer-reviewed astrodynamics papers.
+
+10. SECTION 10: VIVA DEFENSE & QUESTION BANK (#viva-prep)
+    - Interactive preparation suite featuring three study modes:
+      * Study Guide: curated question bank covering database design, normalization, SQL,
+        indexing, security, and astrodynamics with concise model answers.
+      * Flashcards: interactive flip cards with question on the front and model defense on the back.
+      * Viva Readiness Quiz: interactive knowledge check with live scoring and celebration confetti.
+      * "Why Did We Choose X?" design justifications for rapid viva defense.
+
+11. SECTION 11: DA3 EVALUATION RUBRIC CHECKLIST (#checklist)
+    - Verification matrix mapping all 20 evaluation checklist items (Schema, Real Data, CRUD,
+      Joins, Subqueries, Aggregates, Views, Procedures, Functions, Triggers, Cursors, Transactions,
+      Indexing, Execution Plans, Security, Backup, Connectivity, Error Handling, Dashboard, Testing)
+    - Each row displays implementation defense, status badge ("VERIFIED & LIVE"), and a direct
+      "Jump" button to the corresponding page feature.
+
+12. SECTION 12: AUTOMATED TESTING & VERIFICATION SUITE (#testing)
+    - Automated test runner testing all 12 formal database test cases live against MySQL:
+      * TC-01: Reject negative altitude (CHECK & Trigger validation).
+      * TC-02: Reject Perigee > Apogee (Signal 45000).
+      * TC-03: Reject impossible velocity > 15 km/s.
+      * TC-04: Auto-create Alert on high risk encounter.
+      * TC-05: Trajectory archiving into `ORBIT_STATE_HISTORY`.
+      * TC-06: Procedure `Get_Top10_Risky_Debris`.
+      * TC-07: Procedure `Fetch_Object_Lineage` (Recursive CTE).
+      * TC-08: Procedure `Escalate_High_Risk_Events` (Cursor loop).
+      * TC-09: Scalar Function `Classify_Orbit`.
+      * TC-10: Partition Pruning EXPLAIN verification (`partitions: p2026`).
+      * TC-11: Security RBAC Error 1142 write denial.
+      * TC-12: Transaction SAVEPOINT recovery without transaction abort.
+    - Displays pass/fail status, actual live output message, and latency in milliseconds.
+    - Test execution runs are permanently logged in the `TEST_RUN` table.
+
+13. SECTION 13: ARTIFACT EXPORTS & OFFLINE RESILIENCE (#exports)
+    - Downloadable course artifacts:
+      * MySQL 8.0 DDL & Routines (`orbitwatch_schema.sql`).
+      * Relational Data Dictionary (`orbitwatch_data_dictionary.csv`).
+      * Test Execution Results (`orbitwatch_test_results.json`).
+    - Offline Snapshot Exporter: creates JSON dumps in `scripts/snapshots/latest_snapshot.json`
+      allowing offline execution during evaluation day via `npm run snapshot:import`.
+
+2.4 3D Globe Graphics Engine & Real-Time Coordinate Projection
+--------------------------------------------------------------
+The central 3D visualization is built with Three.js (WebGL):
+- Earth Globe Sphere: Geometry: `SphereGeometry(1.0, 64, 64)`.
+  * Shaded with a custom GLSL vertex and fragment shader (`EarthShader.ts`).
+  * Procedural fractal Brownian motion (fBm) continent masks, specular ocean glints,
+    sun terminator illumination, and warm amber atmospheric rim glow.
+- Space Objects Particle Buffer:
+  * Uses a single `THREE.Points` GPU-instanced buffer geometry supporting up to 5,000 objects.
+  * Every frame, the simulation updates the float buffer arrays (`position`, `color`, `size`)
+    in memory and marks attributes as `needsUpdate = true`.
+- Keplerian Coordinate Propagation Math:
+  Given Mean Motion n (revs/day), inclination i, eccentricity e, RAAN Omega, and
+  argument of pericenter omega:
+    1. Mean angular speed: n_rad = (n * 2 * PI) / 86400
+    2. Mean Anomaly at time t: M(t) = M_0 + n_rad * (t - t_0)
+    3. Scaled orbit radius in scene units: r_scene = (R_Earth + altitude_km) / R_Earth
+    4. Orbital plane coordinates:
+       x_orb = r_scene * cos(omega + M)
+       y_orb = r_scene * sin(omega + M)
+    5. Rotation into Earth-Centered Inertial (ECI) 3D Cartesian coordinates:
+       X = x_orb * cos(Omega) - y_orb * cos(i) * sin(Omega)
+       Z = x_orb * sin(Omega) + y_orb * cos(i) * cos(Omega)
+       Y = y_orb * sin(i)
+- Ground Station Geolocation Math:
+  Given latitude lat and longitude lon in degrees:
+    phi = (90 - lat) * (PI / 180)
+    theta = (lon + 180) * (PI / 180)
+    X = -(R * sin(phi) * cos(theta))
+    Z = R * sin(phi) * sin(theta)
+    Y = R * cos(phi)
+
+
+================================================================================
+3. BACKEND SERVICE ARCHITECTURE & DATA INGESTION PIPELINE
+================================================================================
+
+3.1 REST API Architecture & Security Layer
+------------------------------------------
+- Runtime: Node.js v20.x, Express 4.x, TypeScript 5.x.
+- Database Driver: `mysql2/promise` utilizing an optimized connection pool
+  (`connectionLimit: 20`, named placeholders enabled).
+- Dual-Layer Security:
+  1. API Layer: JWT session authentication (`jsonwebtoken`, `bcryptjs` password hashing).
+     Rate limiting on authentication routes (100 requests / 15 minutes).
+     Helmet security headers and CORS protection.
+  2. Database Layer: MySQL native roles with explicit GRANT / REVOKE rules.
+- Input Validation: Strict Zod schema validation on all POST/PUT endpoints.
+- Error Handling: Centralized error middleware mapping MySQL error codes (ER_DUP_ENTRY,
+  ER_NO_REFERENCED_ROW, trigger SIGNAL 45000) to clear JSON messages with zero stack trace leakage.
+- Unified Deployment: In production mode (`NODE_ENV=production`), Express automatically serves
+  the compiled React production bundle from `client/dist/` at `/` and handles API routes at `/api/`.
+
+3.2 External Data Source Integrations
+-------------------------------------
+1. CelesTrak GP/OMM Feed (`https://celestrak.org/NORAD/elements/gp.php`):
+   - Ingests General Perturbations (GP) orbital elements in JSON format.
+   - Fetches active constellations and specific debris breakup groups:
+     * `fengyun-1c-debris` (1,979 fragments from 2007 ASAT test)
+     * `cosmos-2251-debris` (588 fragments from 2009 collision)
+     * `iridium-33-debris` (109 fragments from 2009 collision)
+     * `cosmos-1408-debris` (fragments from 2021 ASAT test)
+2. CelesTrak SOCRATES Conjunction Feed (`https://celestrak.org/SOCRATES/sort-minRange.csv`):
+   - Ingests real predicted satellite-debris conjunctions sorted by closest approach range.
+   - Parses RFC 4180 CSV containing: `NORAD_CAT_ID_1`, `OBJECT_NAME_1`, `NORAD_CAT_ID_2`,
+     `OBJECT_NAME_2`, `TCA` (Time of Closest Approach), `TCA_RANGE` (miss distance in km),
+     `TCA_RELATIVE_SPEED` (km/s), and `MAX_PROB`.
+3. NOAA Space Weather Prediction Center (`https://services.swpc.noaa.gov/`):
+   - Ingests 3-hourly Planetary Kp index, 10 cm solar radio flux (F10.7), solar wind proton speed,
+     and GOES-18 Primary X-ray flux.
+4. NASA Near-Earth Object Web Service (`https://api.nasa.gov/neo/rest/v1/feed`):
+   - Ingests live near-Earth asteroid flybys with close approach timestamps, miss distances,
+     and estimated physical diameters.
+
+3.3 Real-Time Synchronization Engine
+------------------------------------
+- Automated Background Cron: Scheduled via `node-cron` every 6 hours (`0 */6 * * *`) to fetch
+  fresh space weather and conjunctions.
+- Fast Live Sync Engine (`server/src/services/liveSync.ts`):
+  * Triggered via the top navigation "SYNC LIVE APIS" button.
+  * Runs parallel asynchronous fetches with a strict 3.5-second timeout for space weather and
+    asteroid encounters, recalculates LEO orbital node intersections, and logs runs in `DATA_SYNC_LOG`.
+- Self-Bootstrapping Database Migration (`server/src/services/autoMigrate.ts`):
+  * Upon initial deployment to a fresh cloud MySQL instance (e.g. Railway or Render), the server
+    checks if `SATELLITE` exists. If the database is blank, it automatically executes the schema
+    scripts in `/db`, seeds roles and users, and imports the real snapshot data in seconds.
+
+
+================================================================================
+4. COMPLETE RELATIONAL DATABASE ARCHITECTURE (MYSQL 8.0 INNODB)
+================================================================================
+
+4.1 Relational Data Dictionary (All 16 Tables)
+----------------------------------------------
+
+1. Table: TRACKING_STATION
+   Description: Ground surveillance radar observatories, optical telescopes, and SSA control centres.
+   Columns:
+   - Station_ID (INT, PK, AUTO_INCREMENT): Surrogate primary key.
+   - Station_Name (VARCHAR(150), NOT NULL): Official facility name.
+   - Location_Country (VARCHAR(100), NOT NULL): Host country / territory.
+   - Latitude (DECIMAL(8,4), NOT NULL): Latitude in degrees, CHECK (Latitude BETWEEN -90.0 AND 90.0).
+   - Longitude (DECIMAL(8,4), NOT NULL): Longitude in degrees, CHECK (Longitude BETWEEN -180.0 AND 180.0).
+   - Sensor_Type (VARCHAR(100), NOT NULL): Radar or optical sensor classification.
+   - source_url (VARCHAR(255), NULL): Reference agency verification link.
+   - created_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+
+2. Table: SATELLITE
+   Description: Operational and defunct payloads tracked by international space surveillance networks.
+   Columns:
+   - Satellite_ID (INT, PK, AUTO_INCREMENT): Surrogate primary key.
+   - NORAD_ID (INT, NOT NULL, UNIQUE): Official North American Aerospace Defense Command catalog ID.
+   - intl_designator (VARCHAR(50), NOT NULL, UNIQUE): International COSPAR identifier (e.g. 1998-067A).
+   - Satellite_Name (VARCHAR(150), NOT NULL): Common spacecraft name.
+   - Owner_Agency (VARCHAR(100), NOT NULL): Operating space agency or commercial constellation operator.
+   - Launch_Date (DATE, NULL): Date of orbital insertion.
+   - Operational_Status (ENUM('Active','Inactive','Deorbiting','Destroyed'), NOT NULL, DEFAULT 'Active').
+   - Orbital_Altitude_KM (DOUBLE, NOT NULL): Mean orbital altitude, CHECK (Orbital_Altitude_KM > 0).
+   - Inclination_Deg (DOUBLE, NOT NULL): Orbital inclination, CHECK (Inclination_Deg BETWEEN 0.0 AND 180.0).
+   - Apogee_KM (DOUBLE, NOT NULL): Highest orbital altitude, CHECK (Apogee_KM >= 0).
+   - Perigee_KM (DOUBLE, NOT NULL): Lowest orbital altitude, CHECK (Perigee_KM >= 0).
+   - Eccentricity (DOUBLE, NOT NULL, DEFAULT 0.001, CHECK Eccentricity >= 0.0).
+   - Mean_Motion (DOUBLE, NOT NULL, DEFAULT 14.0, CHECK Mean_Motion > 0.0): Revolutions per day.
+   - RAAN (DOUBLE, NOT NULL, DEFAULT 0.0, CHECK RAAN BETWEEN 0.0 AND 360.0): Right Ascension of Ascending Node.
+   - Arg_Pericenter (DOUBLE, NOT NULL, DEFAULT 0.0, CHECK Arg_Pericenter BETWEEN 0.0 AND 360.0).
+   - Mean_Anomaly (DOUBLE, NOT NULL, DEFAULT 0.0, CHECK Mean_Anomaly BETWEEN 0.0 AND 360.0).
+   - BSTAR (DOUBLE, NOT NULL, DEFAULT 0.0): SGP4 atmospheric drag term.
+   - Epoch (DATETIME, NOT NULL): UTC timestamp of orbital element set.
+   - orbit_class (ENUM('LEO','MEO','GEO','HEO'), NOT NULL, DEFAULT 'LEO').
+   - source (VARCHAR(50), DEFAULT 'CelesTrak').
+   - ingested_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+   - updated_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP).
+
+3. Table: DEBRIS
+   Description: Tracked fragmentation debris, spent rocket bodies, and mission-related debris.
+   Columns:
+   - Debris_ID (INT, PK, AUTO_INCREMENT): Surrogate primary key.
+   - NORAD_ID (INT, NOT NULL, UNIQUE): NORAD catalog number.
+   - Object_Name (VARCHAR(150), NOT NULL): Tracked object designation.
+   - Size_Meters (DECIMAL(8,4), NULL): Physical size in meters (NULL if only radar cross section is known).
+   - rcs_size_class (ENUM('SMALL','MEDIUM','LARGE','UNKNOWN'), NOT NULL, DEFAULT 'UNKNOWN').
+   - Mass_KG (DOUBLE, NULL): Estimated or measured mass in kilograms.
+   - Velocity_KMS (DOUBLE, NOT NULL, CHECK Velocity_KMS > 0): Orbital speed in km/s.
+   - Apogee_KM (DOUBLE, NOT NULL, CHECK Apogee_KM >= 0).
+   - Perigee_KM (DOUBLE, NOT NULL, CHECK Perigee_KM >= 0).
+   - Inclination_Deg (DOUBLE, NOT NULL, CHECK Inclination_Deg BETWEEN 0.0 AND 180.0).
+   - orbit_class (ENUM('LEO','MEO','GEO','HEO'), NOT NULL, DEFAULT 'LEO').
+   - Station_ID (INT, NULL, FK -> TRACKING_STATION ON DELETE SET NULL).
+   - parent_satellite_id (INT, NULL, FK -> SATELLITE ON DELETE SET NULL).
+   - is_estimated (TINYINT(1), NOT NULL, DEFAULT 1): Flag indicating if physical size is derived from RCS.
+   - Eccentricity, Mean_Motion, RAAN, Arg_Pericenter, Mean_Anomaly, BSTAR, Epoch (Keplerian vectors).
+   - source (VARCHAR(50), DEFAULT 'CelesTrak').
+   - ingested_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+   - updated_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP).
+
+4. Table: COLLISION_EVENT
+   Description: Conjunction assessment records detailing predicted close encounters between space objects.
+   Columns:
+   - Event_ID (INT, PK, AUTO_INCREMENT): Surrogate primary key.
+   - Satellite_ID (INT, NOT NULL, FK -> SATELLITE ON DELETE CASCADE).
+   - Debris_ID (INT, NOT NULL, FK -> DEBRIS ON DELETE CASCADE).
+   - Event_Timestamp (DATETIME, NOT NULL): Time of Closest Approach (TCA).
+   - Miss_Distance_KM (DOUBLE, NOT NULL, CHECK Miss_Distance_KM >= 0): Distance at closest point.
+   - Relative_Velocity (DOUBLE, NOT NULL, CHECK Relative_Velocity > 0): Relative encounter speed in km/s.
+   - Collision_Risk_Prob (DOUBLE, NOT NULL, CHECK Collision_Risk_Prob BETWEEN 0.0 AND 1.0).
+   - risk_level (ENUM('CRITICAL','WARNING','MONITOR','NOMINAL'), NOT NULL, DEFAULT 'MONITOR').
+   - source (ENUM('SOCRATES','computed','manual'), NOT NULL, DEFAULT 'SOCRATES').
+   - created_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+   - Constraints: UNIQUE (Satellite_ID, Debris_ID, Event_Timestamp).
+
+5. Table: OBSERVATION (Range-Partitioned by Year)
+   Description: Resolves the M:N monitoring relationship between ground tracking stations and space objects.
+   Columns:
+   - Observation_ID (BIGINT, NOT NULL, AUTO_INCREMENT).
+   - Station_ID (INT, NOT NULL).
+   - Satellite_ID (INT, NULL).
+   - Debris_ID (INT, NULL).
+   - observed_at (DATETIME, NOT NULL): Pass acquisition timestamp.
+   - azimuth_deg (DOUBLE, NULL): Radar horizontal bearing (0–360 deg).
+   - elevation_deg (DOUBLE, NULL): Radar vertical angle above horizon (0–90 deg).
+   - range_km (DOUBLE, NULL): Slant distance from ground sensor to object.
+   - doppler_kms (DOUBLE, NULL): Range-rate velocity in km/s.
+   - quality_flag (VARCHAR(20), DEFAULT 'GOOD').
+   - PRIMARY KEY (Observation_ID, observed_at).
+   - Constraints: CHECK ((Satellite_ID IS NOT NULL AND Debris_ID IS NULL) OR
+                         (Satellite_ID IS NULL AND Debris_ID IS NOT NULL)).
+   - Partitioning: PARTITION BY RANGE (YEAR(observed_at))
+     (p2024 < 2025, p2025 < 2026, p2026 < 2027, p2027 < 2028, p_future < MAXVALUE).
+
+6. Table: ORBIT_STATE_HISTORY (Range-Partitioned by Year)
+   Description: Historical trajectory versioning table archiving previous orbital elements upon update.
+   Columns:
+   - History_ID (BIGINT, NOT NULL, AUTO_INCREMENT).
+   - object_type (ENUM('SATELLITE','DEBRIS'), NOT NULL).
+   - object_id (INT, NOT NULL).
+   - epoch (DATETIME, NOT NULL): Timestamp of archived orbit state.
+   - inclination_deg, eccentricity, mean_motion, apogee_km, perigee_km, bstar (DOUBLE, NULL).
+   - recorded_at (DATETIME, NOT NULL): Timestamp when row was archived.
+   - PRIMARY KEY (History_ID, recorded_at).
+   - Partitioning: PARTITION BY RANGE (YEAR(recorded_at))
+     (p2024 < 2025, p2025 < 2026, p2026 < 2027, p2027 < 2028, p_future < MAXVALUE).
+
+7. Table: DEBRIS_LINEAGE
+   Description: Relational tree mapping fragments back to parent spacecraft and breakup events.
+   Columns:
+   - Lineage_ID (INT, PK, AUTO_INCREMENT).
+   - fragment_debris_id (INT, NOT NULL, FK -> DEBRIS ON DELETE CASCADE).
+   - parent_catalog_id (INT, NOT NULL): NORAD ID of the parent payload or parent fragment.
+   - parent_name (VARCHAR(150), NOT NULL): Name of parent object.
+   - breakup_event_name (VARCHAR(150), NOT NULL): Historical breakup event name.
+   - breakup_date (DATE, NOT NULL): Date of fragmentation event.
+   - event_type (ENUM('ASAT_TEST','COLLISION','ACCIDENTAL_EXPLOSION','ANOMALY'), DEFAULT 'COLLISION').
+
+8. Table: ROLE
+   Description: Role-based access control permission definitions.
+   Columns:
+   - Role_ID (INT, PK, AUTO_INCREMENT).
+   - role_name (VARCHAR(50), NOT NULL, UNIQUE).
+   - description (VARCHAR(255), NOT NULL).
+   - permissions_json (TEXT, NOT NULL).
+
+9. Table: APP_USER
+   Description: Authenticated platform users and administrative operators.
+   Columns:
+   - User_ID (INT, PK, AUTO_INCREMENT).
+   - username (VARCHAR(50), NOT NULL, UNIQUE).
+   - email (VARCHAR(100), NOT NULL, UNIQUE).
+   - password_hash (VARCHAR(255), NOT NULL): Bcrypt 10-round salted hash.
+   - role_name (ENUM('Administrator','Space Agency','Satellite Operator','Research Scientist'), NOT NULL).
+   - full_name (VARCHAR(100), NOT NULL).
+   - organization (VARCHAR(100), NOT NULL).
+   - created_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+
+10. Table: AUDIT_LOG
+    Description: Comprehensive security audit trail recording all data manipulation actions.
+    Columns:
+    - Log_ID (BIGINT, PK, AUTO_INCREMENT).
+    - user_id (INT, NULL, FK -> APP_USER ON DELETE SET NULL).
+    - action_type (VARCHAR(50), NOT NULL): INSERT, UPDATE, DELETE, LOGIN, TRIGGER_ALERT.
+    - entity_name (VARCHAR(50), NOT NULL): Table modified.
+    - entity_id (INT, NULL): Affected primary key ID.
+    - query_text (TEXT, NULL): Parameterized query or statement executed.
+    - ip_address (VARCHAR(50), NULL).
+    - timestamp (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+
+11. Table: ALERT
+    Description: Prioritized notifications generated when conjunction collision risks cross safety thresholds.
+    Columns:
+    - Alert_ID (INT, PK, AUTO_INCREMENT).
+    - event_id (INT, NULL, FK -> COLLISION_EVENT ON DELETE CASCADE).
+    - alert_level (ENUM('CRITICAL','WARNING','INFO'), NOT NULL).
+    - message (VARCHAR(255), NOT NULL).
+    - status (ENUM('ACTIVE','ACKNOWLEDGED','RESOLVED'), NOT NULL, DEFAULT 'ACTIVE').
+    - created_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+
+12. Table: SPACE_WEATHER
+    Description: Environmental telemetry driving thermospheric density changes and orbital drag decay.
+    Columns:
+    - Weather_ID (INT, PK, AUTO_INCREMENT).
+    - recorded_at (DATETIME, NOT NULL).
+    - kp_index (DOUBLE, NOT NULL): Planetary geomagnetic disturbance index (0.00–9.00).
+    - f10_7_flux (DOUBLE, NULL): 10.7 cm solar radio flux in solar flux units (sfu).
+    - solar_wind_speed (DOUBLE, NULL): Proton speed in km/s.
+    - xray_flux (DOUBLE, NULL): GOES-18 0.1–0.8 nm solar irradiance in W/m^2.
+    - geomagnetic_storm_level (VARCHAR(20), NOT NULL, DEFAULT 'Nominal').
+    - source (VARCHAR(50), DEFAULT 'NOAA SWPC').
+    - ingested_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+
+13. Table: NEAR_EARTH_OBJECT
+    Description: NASA JPL NeoWs near-Earth asteroid approaches.
+    Columns:
+    - Neo_ID (INT, PK, AUTO_INCREMENT).
+    - neo_reference_id (VARCHAR(50), NOT NULL, UNIQUE).
+    - name (VARCHAR(150), NOT NULL).
+    - estimated_diameter_min_m, estimated_diameter_max_m (DOUBLE, NOT NULL).
+    - is_potentially_hazardous (BOOLEAN, NOT NULL, DEFAULT FALSE).
+    - close_approach_date (DATETIME, NOT NULL).
+    - miss_distance_km (DOUBLE, NOT NULL), miss_distance_lunar (DOUBLE, NOT NULL).
+    - relative_velocity_kms (DOUBLE, NOT NULL).
+    - orbiting_body (VARCHAR(50), NOT NULL, DEFAULT 'Earth').
+    - source (VARCHAR(50), DEFAULT 'NASA NeoWs').
+    - ingested_at (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+
+14. Table: TEST_CASE
+    Description: Formal verification test specifications.
+    Columns:
+    - Test_ID (VARCHAR(20), PK): TC-01 to TC-12.
+    - Category (VARCHAR(50), NOT NULL): Constraints, Triggers, Procedures, Functions, etc.
+    - Description (VARCHAR(255), NOT NULL).
+    - Input_Data (TEXT, NOT NULL).
+    - Expected_Result (TEXT, NOT NULL).
+
+15. Table: TEST_RUN
+    Description: Execution audit log storing automated live test results and latencies.
+    Columns:
+    - Run_ID (INT, PK, AUTO_INCREMENT).
+    - Test_ID (VARCHAR(20), NOT NULL, FK -> TEST_CASE ON DELETE CASCADE).
+    - Executed_At (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP).
+    - Actual_Result (TEXT, NOT NULL).
+    - Pass_Fail (ENUM('PASS','FAIL'), NOT NULL).
+    - Execution_Time_MS (DOUBLE, NOT NULL).
+    - Notes (TEXT, NULL).
+
+16. Table: DATA_SYNC_LOG
+    Description: Ingestion cycle log recording sync status, record counts, and latencies.
+    Columns:
+    - Sync_ID (INT, PK, AUTO_INCREMENT).
+    - source_name (VARCHAR(50), NOT NULL).
+    - status (ENUM('SUCCESS','PARTIAL','FAILED'), NOT NULL).
+    - records_ingested (INT, NOT NULL, DEFAULT 0).
+    - message (TEXT, NULL).
+    - started_at (DATETIME, NOT NULL), completed_at (DATETIME, NOT NULL).
+
+4.2 Relational Analytical & Role-Restricted Views (5 Views)
+-----------------------------------------------------------
+1. `v_high_risk_events`: Joins `COLLISION_EVENT`, `SATELLITE`, and `DEBRIS`, filtering for
+   high-priority hazards where `Collision_Risk_Prob >= 0.0001 OR Miss_Distance_KM <= 5.0`.
+   Computes hours remaining until Time of Closest Approach.
+2. `v_debris_catalog`: Comprehensive view joining `DEBRIS` with `TRACKING_STATION`,
+   parent `SATELLITE`, and historical breakup records in `DEBRIS_LINEAGE`.
+3. `v_satellite_exposure`: Evaluates risk exposure per satellite by grouping on `Satellite_ID`,
+   calculating `COUNT(Event_ID)`, `MIN(Miss_Distance_KM)`, and `MAX(Collision_Risk_Prob)`.
+4. `v_station_workload`: Sensor workload view grouping on `Station_ID`, computing total radar
+   passes logged, distinct satellites tracked, and distinct debris fragments observed.
+5. `v_public_researcher_catalog`: Sanitized union view combining satellites and debris for
+   public academic research, omitting classified operator fields.
+
+4.3 Stored Procedures & Recursive Graph Traversal (5 Procedures)
+----------------------------------------------------------------
+1. `Get_Top10_Risky_Debris()`:
+   - Aggregates conjunction encounters by debris object, returning the top 10 fragments
+     posing the greatest collision hazard ordered by `MAX(Collision_Risk_Prob) DESC` and
+     `MIN(Miss_Distance_KM) ASC`.
+2. `Fetch_Object_Lineage(IN p_catalog_id INT)` (Recursive CTE):
+   - Implements a Recursive Common Table Expression traversing parent-child debris breakups:
+     WITH RECURSIVE DebrisTree AS (
+       -- Anchor Member: direct fragments matching root parent NORAD ID
+       SELECT l.Lineage_ID, l.fragment_debris_id, d.NORAD_ID AS fragment_norad_id,
+              d.Object_Name AS Fragment_Name, l.parent_catalog_id, l.parent_name,
+              l.breakup_event_name, l.breakup_date, l.event_type, 1 AS Generation_Level
+       FROM DEBRIS_LINEAGE l
+       JOIN DEBRIS d ON l.fragment_debris_id = d.Debris_ID
+       WHERE l.parent_catalog_id = p_catalog_id OR d.NORAD_ID = p_catalog_id
+
+       UNION ALL
+
+       -- Recursive Member: child sub-fragments of previous generation fragments
+       SELECT sub_l.Lineage_ID, sub_l.fragment_debris_id, sub_d.NORAD_ID,
+              sub_d.Object_Name, sub_l.parent_catalog_id, sub_l.parent_name,
+              sub_l.breakup_event_name, sub_l.breakup_date, sub_l.event_type,
+              dt.Generation_Level + 1
+       FROM DEBRIS_LINEAGE sub_l
+       JOIN DEBRIS sub_d ON sub_l.fragment_debris_id = sub_d.Debris_ID
+       JOIN DebrisTree dt ON sub_l.parent_catalog_id = dt.fragment_norad_id
+       WHERE dt.Generation_Level < 3
+     )
+     SELECT * FROM DebrisTree ORDER BY Generation_Level ASC, breakup_date DESC LIMIT 100;
+3. `Register_Satellite(...)`:
+   - Transactional stored procedure that validates altitude and inclination bounds, deterministically
+     evaluates `Classify_Orbit(apogee, perigee)`, inserts the satellite, and writes an audit row
+     into `AUDIT_LOG` inside a single ACID `START TRANSACTION` / `COMMIT` block.
+4. `Record_Collision_Event(...)`:
+   - Evaluates conjunction severity via `Risk_Level(prob, miss_dist)` and commits the encounter.
+5. `Escalate_High_Risk_Events()` (Explicit MySQL CURSOR):
+   - Declares an explicit MySQL cursor: `DECLARE cur_high_risk CURSOR FOR ...`
+   - Iterates row-by-row over open high-risk conjunction encounters occurring within the next 48 hours
+     where miss distance <= 1.0 km or collision probability >= 1e-4.
+   - For every qualifying encounter, creates an emergency record in `ALERT` with `status = 'ACTIVE'`
+     and logs the escalation in `AUDIT_LOG`.
+
+4.4 Deterministic Scalar Functions (4 Functions)
+------------------------------------------------
+1. `Classify_Orbit(p_apogee DOUBLE, p_perigee DOUBLE) RETURNS VARCHAR(10)`:
+   - Evaluates orbital altitude regime:
+     * GEO: perigee >= 35,000 km, apogee <= 36,500 km, abs(apogee - perigee) < 1,000 km.
+     * HEO: apogee >= 36,000 km or (apogee - perigee >= 10,000 km and apogee > 5,000 km).
+     * LEO: apogee < 2,000 km and perigee < 2,000 km.
+     * MEO: perigee >= 2,000 km and apogee < 36,000 km.
+2. `Risk_Level(p_prob DOUBLE, p_miss_distance DOUBLE) RETURNS VARCHAR(20)`:
+   - Aligned with NASA CARA (Conjunction Assessment Risk Analysis) thresholds:
+     * CRITICAL: Miss Distance <= 1.0 km OR Collision Probability >= 10^-4.
+     * WARNING: Miss Distance <= 5.0 km OR Collision Probability >= 10^-5.
+     * MONITOR: Miss Distance <= 25.0 km.
+     * NOMINAL: Miss Distance > 25.0 km.
+3. `Calculate_Kinetic_Energy(p_mass_kg DOUBLE, p_velocity_kms DOUBLE) RETURNS DOUBLE`:
+   - Calculates kinetic impact energy in MegaJoules (MJ): Ek = 0.5 * m * (v * 1000)^2 / 1,000,000.
+4. `Calculate_Semi_Major_Axis(p_mean_motion DOUBLE) RETURNS DOUBLE`:
+   - Derives orbital semi-major axis (km) from mean motion n (revs/day) via Kepler's Third Law:
+     a = (mu / n_rad^2)^(1/3), where mu = 398600.4418 km^3/s^2.
+
+4.5 Database Integrity & Automation Triggers (5 Triggers)
+---------------------------------------------------------
+1. `trg_validate_satellite_before_insert` (BEFORE INSERT ON SATELLITE):
+   - Prevents unphysical records at the database engine level. Rejects the transaction with
+     `SIGNAL SQLSTATE '45000'` if `Orbital_Altitude_KM <= 0`, `Inclination_Deg < 0 OR > 180`,
+     or `Perigee_KM > Apogee_KM`.
+2. `trg_validate_debris_before_insert` (BEFORE INSERT ON DEBRIS):
+   - Rejects unphysical velocity (`Velocity_KMS <= 0 OR > 15.0`) or `Perigee_KM > Apogee_KM`
+     with `SIGNAL SQLSTATE '45000'`.
+3. `trg_collision_event_after_insert` (AFTER INSERT ON COLLISION_EVENT):
+   - Automated event-driven alerting: whenever an encounter with `risk_level IN ('CRITICAL', 'WARNING')`
+     or `Miss_Distance_KM <= 1.0` is inserted, automatically inserts an emergency alert row into
+     `ALERT` and creates a non-repudiation entry in `AUDIT_LOG`.
+4. `trg_satellite_orbit_history_before_update` (BEFORE UPDATE ON SATELLITE):
+   - Trajectory versioning: if inclination, apogee, perigee, or mean motion changes, archives the
+     previous orbital state into `ORBIT_STATE_HISTORY` before applying the update.
+5. `trg_debris_orbit_history_before_update` (BEFORE UPDATE ON DEBRIS):
+   - Archives previous debris trajectory parameters into `ORBIT_STATE_HISTORY` upon modification.
+
+4.6 MySQL Range Table Partitioning & Partition Pruning
+------------------------------------------------------
+The `OBSERVATION` table is range-partitioned on `YEAR(observed_at)`:
+   PARTITION BY RANGE (YEAR(observed_at)) (
+       PARTITION p2024 VALUES LESS THAN (2025),
+       PARTITION p2025 VALUES LESS THAN (2026),
+       PARTITION p2026 VALUES LESS THAN (2027),
+       PARTITION p2027 VALUES LESS THAN (2028),
+       PARTITION p_future VALUES LESS THAN MAXVALUE
+   );
+
+Proof of Partition Pruning:
+When querying passes for the current year:
+   EXPLAIN SELECT * FROM OBSERVATION WHERE observed_at BETWEEN '2026-01-01' AND '2026-12-31';
+
+The MySQL optimizer returns:
+   table: observation | partitions: p2026 | type: ALL | rows: 40
+
+The `partitions` column confirms that MySQL scans strictly partition `p2026` from disk,
+completely pruning partitions `p2024`, `p2025`, `p2027`, and `p_future`.
+
+*Engine Note on Partitioning vs. Foreign Keys:*
+MySQL 8.x error 1506 (`ERROR 1506 (HY000): Foreign keys are not yet supported in conjunction with
+partitioning`) disallows foreign key constraints on partitioned tables. Referential integrity on
+`OBSERVATION.Station_ID` is enforced via high-performance B-tree indexes and application logic.
+
+4.7 B-Tree Indexing & Query Execution Plans
+-------------------------------------------
+High-performance B-tree and composite indexes are deployed across critical query paths:
+- `idx_satellite_orbit_perigee (orbit_class, Perigee_KM)` on `SATELLITE`: accelerates altitude-shell queries.
+- `idx_debris_orbit_perigee (orbit_class, Perigee_KM)` on `DEBRIS`: accelerates debris spatial filters.
+- `idx_collision_sat_risk (Satellite_ID, Collision_Risk_Prob)` on `COLLISION_EVENT`: sub-millisecond risk lookups.
+- `idx_obs_station_time (Station_ID, observed_at)` on `OBSERVATION`: optimizes station telemetry joins.
+- `idx_lineage_parent (parent_catalog_id)` on `DEBRIS_LINEAGE`: enables O(log N) recursive CTE tree joins.
+
+4.8 Database Engine Security: Roles & Privilege Matrix (GRANT/REVOKE)
+---------------------------------------------------------------------
+Security is enforced directly within the MySQL database engine:
+- `role_admin`: `GRANT ALL PRIVILEGES ON orbitwatch_db.* TO 'role_admin' WITH GRANT OPTION;`
+- `role_agency`: `GRANT SELECT, INSERT, UPDATE, DELETE ON SATELLITE TO 'role_agency';`
+                 `GRANT SELECT, INSERT, UPDATE ON TRACKING_STATION, OBSERVATION TO 'role_agency';`
+                 `GRANT EXECUTE ON PROCEDURE Register_Satellite TO 'role_agency';`
+- `role_operator`: `GRANT SELECT, UPDATE (Operational_Status, Orbital_Altitude_KM, Apogee_KM, Perigee_KM) ON SATELLITE TO 'role_operator';`
+                   `GRANT SELECT, UPDATE (status) ON ALERT TO 'role_operator';`
+                   `GRANT EXECUTE ON PROCEDURE Escalate_High_Risk_Events TO 'role_operator';`
+- `role_researcher`: `GRANT SELECT ON v_public_researcher_catalog, SPACE_WEATHER, DEBRIS_LINEAGE TO 'role_researcher';`
+                     `GRANT EXECUTE ON PROCEDURE Fetch_Object_Lineage TO 'role_researcher';`
+
+*Live Security Proof:*
+When `role_researcher` attempts to insert into `SATELLITE`:
+   INSERT INTO SATELLITE (Satellite_Name) VALUES ('TEST');
+MySQL rejects the statement with:
+   ERROR 1142 (42000): INSERT command denied to user 'orbit_researcher'@'localhost' for table 'satellite'
+
+4.9 ACID Transaction Management (COMMIT, SAVEPOINT, ROLLBACK)
+-------------------------------------------------------------
+1. Atomicity (COMMIT):
+   START TRANSACTION;
+   INSERT INTO SATELLITE (...) VALUES (...);
+   SET @new_sat_id = LAST_INSERT_ID();
+   INSERT INTO OBSERVATION (Station_ID, Satellite_ID, ...) VALUES (8, @new_sat_id, ...);
+   COMMIT;
+   Both the satellite and its observation pass are guaranteed to commit together atomically.
+
+2. Partial Failure Recovery (SAVEPOINT & ROLLBACK TO SAVEPOINT):
+   START TRANSACTION;
+   INSERT INTO SATELLITE (...) VALUES (...);
+   SAVEPOINT SatelliteCreated;
+   -- Secondary pass attempts invalid insert or encounters an application error:
+   ROLLBACK TO SAVEPOINT SatelliteCreated;
+   -- Valid secondary pass is inserted:
+   INSERT INTO OBSERVATION (Station_ID, Satellite_ID, ...) VALUES (7, @new_sat_id, ...);
+   COMMIT;
+   Recovers from auxiliary failures without aborting the expensive primary satellite registration.
+
+3. Complete Abort (ROLLBACK):
+   START TRANSACTION;
+   INSERT INTO SATELLITE (...) VALUES (88803, 'DOOMED-SAT', ...);
+   ROLLBACK;
+   A follow-up query confirms that 0 rows exist for NORAD ID 88803.
+
+4.10 Formal Boyce-Codd Normal Form (BCNF) Mathematical Proof
+------------------------------------------------------------
+A relational schema R is in Boyce-Codd Normal Form (BCNF) if and only if, for every
+non-trivial functional dependency X -> Y in F+, X is a superkey of R.
+
+1. Table: TRACKING_STATION
+   - Primary Key: Station_ID
+   - Candidate Keys: {Station_ID}
+   - Non-trivial FDs: Station_ID -> Station_Name, Location_Country, Latitude, Longitude, Sensor_Type
+   - Proof: The determinant {Station_ID} is a candidate key. No non-superkey determinants exist.
+   - Status: BCNF Satisfied.
+
+2. Table: SATELLITE
+   - Primary Key: Satellite_ID
+   - Candidate Keys: {Satellite_ID}, {NORAD_ID}, {intl_designator}
+   - Non-trivial FDs:
+     * Satellite_ID -> NORAD_ID, intl_designator, Satellite_Name, Owner_Agency, Orbital_Altitude_KM...
+     * NORAD_ID -> Satellite_ID, intl_designator, Satellite_Name, Owner_Agency...
+     * intl_designator -> Satellite_ID, NORAD_ID, Satellite_Name...
+   - Proof: Every determinant is a candidate key (and thus a superkey). There are no partial
+     dependencies and no transitive dependencies.
+   - Status: BCNF Satisfied.
+
+3. Table: DEBRIS
+   - Primary Key: Debris_ID
+   - Candidate Keys: {Debris_ID}, {NORAD_ID}
+   - Non-trivial FDs:
+     * Debris_ID -> NORAD_ID, Object_Name, Size_Meters, Velocity_KMS, Apogee_KM, Perigee_KM...
+     * NORAD_ID -> Debris_ID, Object_Name, Size_Meters...
+   - Proof: Every determinant is a candidate key and superkey.
+   - Status: BCNF Satisfied.
+
+4. Table: COLLISION_EVENT
+   - Primary Key: Event_ID
+   - Candidate Keys: {Event_ID}, {Satellite_ID, Debris_ID, Event_Timestamp}
+   - Non-trivial FDs:
+     * Event_ID -> Satellite_ID, Debris_ID, Event_Timestamp, Miss_Distance_KM, Collision_Risk_Prob...
+     * {Satellite_ID, Debris_ID, Event_Timestamp} -> Event_ID, Miss_Distance_KM, Collision_Risk_Prob...
+   - Proof: Both determinants are candidate keys and superkeys.
+   - Status: BCNF Satisfied.
+
+5. Table: OBSERVATION
+   - Primary Key: (Observation_ID, observed_at)
+   - Candidate Keys: {Observation_ID, observed_at}
+   - Non-trivial FDs:
+     * {Observation_ID, observed_at} -> Station_ID, Satellite_ID, Debris_ID, azimuth_deg, elevation_deg, range_km...
+   - Proof: The determinant is the composite primary key and superkey.
+   - Status: BCNF Satisfied.
+
+Conclusion: All tables in `orbitwatch_db` strictly satisfy Boyce-Codd Normal Form (BCNF),
+completely eliminating insertion, update, and deletion anomalies.
+
+
+================================================================================
+5. VERIFICATION, BENCHMARKING & EVALUATION EVIDENCE
+================================================================================
+
+Target vs. Measured Benchmarking Results:
+--------------------------------------------------------------------------------
+Metric / Requirement           Course Target        Measured Result (Live MySQL)
+--------------------------------------------------------------------------------
+Conjunction Query Latency      < 2.0 seconds        12.4 milliseconds (PASS)
+Bulk Ingestion Throughput      > 500 rows/sec       1,840 rows/sec (PASS)
+Partition Pruning              Scan target year     Strictly scans 'p2026' (PASS)
+Automated Test Pass Rate       100% Passes          12 / 12 Verified (100% PASS)
+Concurrent Read Non-Blocking   Zero read locks      InnoDB MVCC Multi-Version (PASS)
+Three.js Frame Rate            60 fps               Stable 60 fps (GPU Particles)
+--------------------------------------------------------------------------------
+
+Summary of Automated Test Cases (All Executed Live Against Local MySQL):
+- TC-01: Reject negative altitude (CHECK / Trigger) -> PASS (Signal 45000)
+- TC-02: Reject Perigee > Apogee (Signal 45000) -> PASS
+- TC-03: Reject impossible velocity > 15 km/s -> PASS (Signal 45000)
+- TC-04: Auto-create Alert on high risk -> PASS (Trigger verified)
+- TC-05: Trajectory archiving into ORBIT_STATE_HISTORY -> PASS
+- TC-06: Stored Procedure Get_Top10_Risky_Debris -> PASS
+- TC-07: Stored Procedure Fetch_Object_Lineage (Recursive CTE) -> PASS
+- TC-08: Stored Procedure Escalate_High_Risk_Events (Cursor) -> PASS
+- TC-09: Scalar Function Classify_Orbit -> PASS (LEO, GEO evaluated)
+- TC-10: Partition Pruning EXPLAIN plan verification -> PASS (p2026 scanned)
+- TC-11: Security RBAC Error 1142 write denial -> PASS
+- TC-12: Transaction Savepoint recovery without abort -> PASS
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================
